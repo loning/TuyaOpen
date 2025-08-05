@@ -15,8 +15,8 @@
 #include "tal_log.h"
 #include "tal_memory.h"
 
+#include "tdd_display_spi.h"
 #include "tdd_disp_st7305.h"
-#include "tdl_display_driver.h"
 
 /***********************************************************
 ***********************MACRO define**********************
@@ -121,13 +121,13 @@ static void __disp_spi_st7305_set_addr(DISP_SPI_BASE_CFG_T *p_cfg, uint8_t xs)
 
     data[0] = xs;
     data[1] = xs + (p_cfg->width + 11) / (4 * 3) - 1;
-    tdl_disp_spi_send_cmd(p_cfg, p_cfg->cmd_caset);
-    tdl_disp_spi_send_data(p_cfg, data, sizeof(data));
+    tdd_disp_spi_send_cmd(p_cfg, p_cfg->cmd_caset);
+    tdd_disp_spi_send_data(p_cfg, data, sizeof(data));
 
     data[0] = 0x00;
     data[1] = (p_cfg->height + 1) / 2 - 1; // Height is divided by 2 for ST7305
-    tdl_disp_spi_send_cmd(p_cfg, p_cfg->cmd_raset);
-    tdl_disp_spi_send_data(p_cfg, data, sizeof(data));
+    tdd_disp_spi_send_cmd(p_cfg, p_cfg->cmd_raset);
+    tdd_disp_spi_send_data(p_cfg, data, sizeof(data));
 }
 
 static OPERATE_RET __tdd_disp_spi_st7305_open(TDD_DISP_DEV_HANDLE_T device)
@@ -142,11 +142,11 @@ static OPERATE_RET __tdd_disp_spi_st7305_open(TDD_DISP_DEV_HANDLE_T device)
 
     gate_line = (disp_spi_dev->cfg.height + 3) / 4;
 
-    tdl_disp_modify_init_seq_param(ST7305_INIT_SEQ, 0xB0, gate_line, 0); // Set gate line count
+    tdd_disp_modify_init_seq_param(ST7305_INIT_SEQ, 0xB0, gate_line, 0); // Set gate line count
 
-    tdl_disp_spi_init(&(disp_spi_dev->cfg));
+    tdd_disp_spi_init(&(disp_spi_dev->cfg));
 
-    tdl_disp_spi_init_seq(&(disp_spi_dev->cfg), (const uint8_t *)ST7305_INIT_SEQ);
+    tdd_disp_spi_init_seq(&(disp_spi_dev->cfg), (const uint8_t *)ST7305_INIT_SEQ);
 
     PR_DEBUG("[ST7305] Initialize display device successful.");
 
@@ -169,8 +169,8 @@ static OPERATE_RET __tdd_disp_spi_st7305_flush(TDD_DISP_DEV_HANDLE_T device, TDL
 
     __disp_spi_st7305_set_addr(&disp_spi_dev->cfg, disp_spi_dev->caset_xs);
 
-    tdl_disp_spi_send_cmd(&disp_spi_dev->cfg, disp_spi_dev->cfg.cmd_ramwr);
-    tdl_disp_spi_send_data(&disp_spi_dev->cfg, disp_spi_dev->convert_fb->frame, disp_spi_dev->convert_fb->len);
+    tdd_disp_spi_send_cmd(&disp_spi_dev->cfg, disp_spi_dev->cfg.cmd_ramwr);
+    tdd_disp_spi_send_data(&disp_spi_dev->cfg, disp_spi_dev->convert_fb->frame, disp_spi_dev->convert_fb->len);
 
     return rt;
 }
@@ -249,8 +249,8 @@ OPERATE_RET tdd_disp_spi_mono_st7305_register(char *name, DISP_SPI_DEVICE_CFG_T 
         .close = __tdd_disp_spi_st7305_close,
     };
 
-    TUYA_CALL_ERR_RETURN(
-        tdl_disp_device_register(name, (TDD_DISP_DEV_HANDLE_T)disp_spi_dev, &disp_spi_intfs, &disp_spi_dev_info));
+    TUYA_CALL_ERR_RETURN(tdl_disp_device_register(name, (TDD_DISP_DEV_HANDLE_T)disp_spi_dev,\
+                                                 &disp_spi_intfs, &disp_spi_dev_info));
 
     PR_NOTICE("tdd_disp_spi_st7305_register: %s", name);
 

@@ -387,7 +387,7 @@ OPERATE_RET netmgr_conn_get(netmgr_type_e type, netmgr_conn_config_type_e cmd, v
         return OPRT_RESOURCE_NOT_READY;
     }
 
-    PR_DEBUG("netmgr conn %s get %d", NETMGR_TYPE_TO_STR(type), cmd);
+    // PR_DEBUG("netmgr conn %s get %d", NETMGR_TYPE_TO_STR(type), cmd);
 
     if (NETCONN_AUTO == type) {
         // get the active connection

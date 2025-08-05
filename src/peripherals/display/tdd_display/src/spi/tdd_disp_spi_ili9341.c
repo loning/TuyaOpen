@@ -13,8 +13,8 @@
 #include "tuya_cloud_types.h"
 #include "tal_log.h"
 
+#include "tdd_display_spi.h"
 #include "tdd_disp_ili9341.h"
-#include "tdl_display_driver.h"
 
 /***********************************************************
 ***********************const define**********************
@@ -81,5 +81,5 @@ OPERATE_RET tdd_disp_spi_ili9341_register(char *name, DISP_SPI_DEVICE_CFG_T *dev
     memcpy(&sg_disp_spi_cfg.power, &dev_cfg->power, sizeof(TUYA_DISPLAY_IO_CTRL_T));
     memcpy(&sg_disp_spi_cfg.bl, &dev_cfg->bl, sizeof(TUYA_DISPLAY_BL_CTRL_T));
 
-    return tdl_disp_spi_device_register(name, &sg_disp_spi_cfg);
+    return tdd_disp_spi_device_register(name, &sg_disp_spi_cfg);
 }

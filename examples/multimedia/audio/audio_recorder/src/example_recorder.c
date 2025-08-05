@@ -50,8 +50,8 @@
 #define RECORDER_WAV_FILE_PATH "/sdcard/tuya_recorder.wav"
 #endif
 
-#define SPEAKER_ENABLE_PIN TUYA_GPIO_NUM_28
-#define AUDIO_TRIGGER_PIN  TUYA_GPIO_NUM_12
+#define SPEAKER_ENABLE_PIN EXAMPLE_AUDIO_SPEAKER_PIN
+#define AUDIO_TRIGGER_PIN  EXAMPLE_AUDIO_TRIGGER_PIN
 
 // MIC sample rate
 #define MIC_SAMPLE_RATE TKL_AUDIO_SAMPLE_16K
@@ -81,6 +81,35 @@ struct recorder_ctx {
     // Recording file handle
     TUYA_FILE file_hdl;
 };
+
+#include <modules/mp3dec.h>
+
+extern const char media_src_hello_tuya_16k[9009];
+
+#define PCM_SIZE_MAX (MAX_NSAMP * MAX_NCHAN * MAX_NGRAN)
+#define MP3_FILE_ARRAY          media_src_hello_tuya_16k
+
+
+
+struct speaker_mp3_ctx {
+    HMP3Decoder decode_hdl;
+    MP3FrameInfo frame_info;
+    unsigned char *read_buf;
+    uint32_t read_size; // valid data size in read_buf
+
+    uint32_t mp3_offset; // current mp3 read position
+
+    short *pcm_buf;
+};
+
+static struct speaker_mp3_ctx sg_mp3_ctx = {
+    .decode_hdl = NULL,
+    .read_buf = NULL,
+    .read_size = 0,
+    .mp3_offset = 0,
+    .pcm_buf = NULL,
+};
+
 
 /***********************************************************
 ********************function declaration********************
@@ -125,46 +154,150 @@ static BOOL_T audio_trigger_pin_is_pressed(void)
 static int _audio_frame_put(TKL_AUDIO_FRAME_INFO_T *pframe)
 {
     if (NULL == sg_recorder_ctx.pcm_buf) {
-        return pframe->buf_size;
+        return pframe->used_size;
     }
 
-    uint32_t free_size = tuya_ring_buff_free_size_get(sg_recorder_ctx.pcm_buf);
-    if (sg_recorder_ctx.recording && free_size >= pframe->buf_size) {
-        tuya_ring_buff_write(sg_recorder_ctx.pcm_buf, pframe->pbuf, pframe->buf_size);
+    if (sg_recorder_ctx.recording) {
+        tuya_ring_buff_write(sg_recorder_ctx.pcm_buf, pframe->pbuf, pframe->used_size);
     }
 
-    return pframe->buf_size;
+    return pframe->used_size;
 }
 
 static void app_audio_init(void)
 {
-    TKL_AUDIO_CONFIG_T config;
+    int ret = 0;
+    TKL_AUDIO_CONFIG_T config ={0};
 
-    memset(&config, 0, sizeof(TKL_AUDIO_CONFIG_T));
-
-    config.enable = 1;
-    config.ai_chn = 0;
-    config.sample = MIC_SAMPLE_RATE;
-    config.spk_sample = MIC_SAMPLE_RATE; // Same as MIC sample rate to avoid audio data conversion, directly play MIC
-                                         // captured audio data
-    config.datebits = MIC_SAMPLE_BITS;
-    config.channel = MIC_CHANNEL;
-    config.codectype = TKL_CODEC_AUDIO_PCM;
+    config.enable = false;
     config.card = TKL_AUDIO_TYPE_BOARD;
-    config.put_cb = _audio_frame_put;
+    config.ai_chn = TKL_AI_0;
+    config.spk_gpio_polarity= 0;     // sample
+    config.sample = MIC_SAMPLE_RATE;     // sample
+    config.datebits = MIC_SAMPLE_BITS;   // datebit
+    config.channel = TKL_AUDIO_CHANNEL_MONO;                         // channel num
+    config.codectype = TKL_CODEC_AUDIO_PCM;     // codec type
+
     config.spk_gpio = SPEAKER_ENABLE_PIN;
-    config.spk_gpio_polarity = 0;
+    config.put_cb = _audio_frame_put;
 
-    tkl_ai_init(&config, 0);
+    PR_DEBUG("TODO ... %s %d", __func__, __LINE__);
 
-    tkl_ai_start(0, 0);
+    ret = tkl_ai_init(&config, 1);
 
-    tkl_ai_set_vol(0, 0, 80);
+    ret |= tkl_ai_set_vol(TKL_AUDIO_TYPE_BOARD, 0, 80);
 
-    tkl_ao_set_vol(TKL_AUDIO_TYPE_BOARD, 0, NULL, 30);
+    ret |= tkl_ai_start(TKL_AUDIO_TYPE_BOARD,0);
+
+    tkl_ao_set_vol(TKL_AUDIO_TYPE_BOARD, 0, NULL, 60);
 
     return;
 }
+
+static void app_mp3_decode_init(void)
+{
+    sg_mp3_ctx.read_buf = tkl_system_psram_malloc(MAINBUF_SIZE);
+    if (sg_mp3_ctx.read_buf == NULL) {
+        PR_ERR("mp3 read buf malloc failed!");
+        return;
+    }
+
+    sg_mp3_ctx.pcm_buf = tkl_system_psram_malloc(PCM_SIZE_MAX * 2);
+    if (sg_mp3_ctx.pcm_buf == NULL) {
+        PR_ERR("pcm_buf malloc failed!");
+        return;
+    }
+
+    sg_mp3_ctx.decode_hdl = MP3InitDecoder();
+    if (sg_mp3_ctx.decode_hdl == NULL) {
+        tkl_system_psram_free(sg_mp3_ctx.read_buf);
+        sg_mp3_ctx.read_buf = NULL;
+        tkl_system_psram_free(sg_mp3_ctx.pcm_buf);
+        sg_mp3_ctx.pcm_buf = NULL;
+        PR_ERR("MP3Decoder init failed!");
+        return;
+    }
+
+    return;
+}
+
+static void app_speaker_play(void)
+{
+    int rt = 0;
+    uint32_t head_offset = 0;
+    unsigned char *mp3_frame_head = NULL;
+    uint32_t decode_size_remain = 0;
+    uint32_t read_size_remain = 0;
+
+    if (sg_mp3_ctx.decode_hdl == NULL || sg_mp3_ctx.read_buf == NULL || sg_mp3_ctx.pcm_buf == NULL) {
+        PR_ERR("MP3Decoder init fail!");
+        return;
+    }
+
+    memset(sg_mp3_ctx.read_buf, 0, MAINBUF_SIZE);
+    memset(sg_mp3_ctx.pcm_buf, 0, PCM_SIZE_MAX * 2);
+    sg_mp3_ctx.read_size = 0;
+    sg_mp3_ctx.mp3_offset = 0;
+
+    do {
+        // 1. read mp3 data
+        // Audio file frequency should match the configured spk_sample
+        // You can use https://convertio.co/zh/ website for online audio format and frequency conversion
+        if (mp3_frame_head != NULL && decode_size_remain > 0) {
+            memmove(sg_mp3_ctx.read_buf, mp3_frame_head, decode_size_remain);
+            sg_mp3_ctx.read_size = decode_size_remain;
+        }
+
+        if (sg_mp3_ctx.mp3_offset >= sizeof(MP3_FILE_ARRAY)) { // mp3 file reading completed
+            if (decode_size_remain == 0) {                     // last frame data decoding and playback completed
+                PR_NOTICE("mp3 play finish!");
+                break;
+            } else {
+                goto __MP3_DECODE;
+            }
+        }
+
+        read_size_remain = MAINBUF_SIZE - sg_mp3_ctx.read_size;
+        if (read_size_remain > sizeof(MP3_FILE_ARRAY) - sg_mp3_ctx.mp3_offset) {
+            read_size_remain =
+                sizeof(MP3_FILE_ARRAY) - sg_mp3_ctx.mp3_offset; // remaining data is less than read_buf size
+        }
+        if (read_size_remain > 0) {
+            memcpy(sg_mp3_ctx.read_buf + sg_mp3_ctx.read_size, MP3_FILE_ARRAY + sg_mp3_ctx.mp3_offset,
+                   read_size_remain);
+            sg_mp3_ctx.read_size += read_size_remain;
+            sg_mp3_ctx.mp3_offset += read_size_remain;
+        }
+
+    __MP3_DECODE:
+        // 2. decode mp3 data
+        head_offset = MP3FindSyncWord(sg_mp3_ctx.read_buf, sg_mp3_ctx.read_size);
+        if (head_offset < 0) {
+            PR_ERR("MP3FindSyncWord not find!");
+            break;
+        }
+
+        mp3_frame_head = sg_mp3_ctx.read_buf + head_offset;
+        decode_size_remain = sg_mp3_ctx.read_size - head_offset;
+        rt = MP3Decode(sg_mp3_ctx.decode_hdl, &mp3_frame_head, (int *)&decode_size_remain, sg_mp3_ctx.pcm_buf, 0);
+        if (rt != ERR_MP3_NONE) {
+            PR_ERR("MP3Decode failed, code is %d", rt);
+            break;
+        }
+
+        memset(&sg_mp3_ctx.frame_info, 0, sizeof(MP3FrameInfo));
+        MP3GetLastFrameInfo(sg_mp3_ctx.decode_hdl, &sg_mp3_ctx.frame_info);
+
+        // 3. play pcm data
+        TKL_AUDIO_FRAME_INFO_T frame;
+        frame.pbuf = (char *)sg_mp3_ctx.pcm_buf;
+        frame.used_size = sg_mp3_ctx.frame_info.outputSamps * 2;
+        tkl_ao_put_frame(0, 0, NULL, &frame);
+    } while (1);
+
+    return;
+}
+
 
 static void app_mic_record(void)
 {
@@ -241,6 +374,8 @@ static void app_recode_play_from_ringbuf(void)
             tuya_ring_buff_read(sg_recorder_ctx.pcm_buf, frame_buf, data_len);
             out_len = data_len;
         }
+
+        // PR_NOTICE("data_len %d out_len %d", data_len, out_len);
 
         TKL_AUDIO_FRAME_INFO_T frame_info;
         frame_info.pbuf = frame_buf;
@@ -408,10 +543,11 @@ __EXIT:
 
 static void app_recorder_thread(void *arg)
 {
-    OPERATE_RET rt = OPRT_OK;
-
     app_audio_trigger_pin_init();
+    app_mp3_decode_init();
     app_audio_init();
+
+    app_speaker_play();
 
     for (;;) {
         app_mic_record();

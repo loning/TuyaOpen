@@ -16,7 +16,7 @@
 #include "tal_log.h"
 
 #include "tdd_disp_st7735s.h"
-#include "tdl_display_driver.h"
+#include "tdd_display_qspi.h"
 
 /***********************************************************
 ***********************const define**********************
@@ -90,5 +90,5 @@ OPERATE_RET tdd_disp_qspi_st7735s_register(char *name, DISP_QSPI_DEVICE_CFG_T *d
     memcpy(&sg_disp_qspi_cfg.power, &dev_cfg->power, sizeof(TUYA_DISPLAY_IO_CTRL_T));
     memcpy(&sg_disp_qspi_cfg.bl, &dev_cfg->bl, sizeof(TUYA_DISPLAY_BL_CTRL_T));
 
-    return tdl_disp_qspi_device_register(name, &sg_disp_qspi_cfg);
+    return tdd_disp_qspi_simulate_spi_device_register(name, &sg_disp_qspi_cfg);
 }

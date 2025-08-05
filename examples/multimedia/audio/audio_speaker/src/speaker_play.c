@@ -32,11 +32,18 @@
 #define USE_SD_CARD        2
 #define MP3_FILE_SOURCE    USE_C_ARRAY
 
-#define MP3_DATA_BUF_SIZE 1940
+#define AUDIO_INPUT_CH     TKL_AI_1
+#define AUDIO_CH_NUM       TKL_AUDIO_CHANNEL_MONO 
+#define AUDIO_TYPE         TKL_AUDIO_TYPE_BOARD 
+#define AUDIO_CODEC_TYPE   TKL_CODEC_AUDIO_PCM
+#define AUDIO_SAMPLE_RATE  TKL_AUDIO_SAMPLE_16K
+#define AUDIO_SAMPLE_BITS  16
+
+#define MP3_DATA_BUF_SIZE  1940
 
 #define PCM_SIZE_MAX (MAX_NSAMP * MAX_NCHAN * MAX_NGRAN)
 
-#define SPEAKER_ENABLE_PIN TUYA_GPIO_NUM_28
+#define SPEAKER_ENABLE_PIN EXAMPLE_AUDIO_SPEAKER_PIN
 
 #define MP3_FILE_ARRAY          media_src_hello_tuya_16k
 #define MP3_FILE_INTERNAL_FLASH "/media/hello_tuya.mp3"
@@ -78,7 +85,6 @@ static struct speaker_mp3_ctx sg_mp3_ctx = {
 ***********************************************************/
 static void app_fs_init(void)
 {
-    OPERATE_RET rt = OPRT_OK;
 
 #if MP3_FILE_SOURCE == USE_INTERNAL_FLASH
     rt = tkl_fs_mount("/", DEV_INNER_FLASH);
@@ -128,34 +134,42 @@ static void app_mp3_decode_init(void)
 
 static int _audio_frame_put(TKL_AUDIO_FRAME_INFO_T *pframe)
 {
-    return pframe->buf_size;
+    return 0;
 }
 
-static void app_speaker_init(void)
+static OPERATE_RET app_speaker_init(void)
 {
-    TKL_AUDIO_CONFIG_T config;
+    OPERATE_RET rt = OPRT_OK;
+    TKL_AUDIO_CONFIG_T config ={0};
 
-    config.enable = 0;
-    config.ai_chn = 0;
-    config.sample = 16000;
-    config.spk_sample = 16000;
-    config.datebits = 16;
-    config.channel = 1;
-    config.codectype = TKL_CODEC_AUDIO_PCM;
-    config.card = TKL_AUDIO_TYPE_BOARD;
-    config.put_cb = _audio_frame_put;
-    config.spk_gpio = SPEAKER_ENABLE_PIN;
+    config.enable    = true;
+    config.card      = AUDIO_TYPE;
+    config.ai_chn    = AUDIO_INPUT_CH;
+    config.sample    = AUDIO_SAMPLE_RATE;    
+    config.datebits  = AUDIO_SAMPLE_BITS;  
+    config.channel   = AUDIO_CH_NUM; 
+    config.codectype = AUDIO_CODEC_TYPE;
+    config.put_cb    = _audio_frame_put;
+
+    config.fps = 25;                            // frame per second，suggest 25
+    config.mic_volume = 0x2d;
+    config.spk_volume = 0x2d;
+
     config.spk_gpio_polarity = 0;
+    config.spk_sample = AUDIO_SAMPLE_RATE;
+    config.spk_gpio   = SPEAKER_ENABLE_PIN;
 
-    tkl_ai_init(&config, 0);
+    PR_NOTICE("TODO ... %s %d\r\n", __func__, __LINE__);
 
-    tkl_ai_start(0, 0);
+    TUYA_CALL_ERR_RETURN(tkl_ai_init(&config, 1));
 
-    tkl_ai_set_vol(0, 0, 80);
+    TUYA_CALL_ERR_RETURN(tkl_ai_start(AUDIO_TYPE, AUDIO_INPUT_CH));
 
-    tkl_ao_set_vol(TKL_AUDIO_TYPE_BOARD, 0, NULL, 30);
+    TUYA_CALL_ERR_RETURN(tkl_ai_set_vol(AUDIO_TYPE, AUDIO_INPUT_CH, 80));
 
-    return;
+    TUYA_CALL_ERR_RETURN(tkl_ao_set_vol(AUDIO_TYPE, AUDIO_INPUT_CH, NULL, 60));
+
+    return rt;
 }
 
 static void app_speaker_play(void)
@@ -256,7 +270,7 @@ static void app_speaker_play(void)
 
         mp3_frame_head = sg_mp3_ctx.read_buf + head_offset;
         decode_size_remain = sg_mp3_ctx.read_size - head_offset;
-        rt = MP3Decode(sg_mp3_ctx.decode_hdl, &mp3_frame_head, &decode_size_remain, sg_mp3_ctx.pcm_buf, 0);
+        rt = MP3Decode(sg_mp3_ctx.decode_hdl, &mp3_frame_head, (int *)&decode_size_remain, sg_mp3_ctx.pcm_buf, 0);
         if (rt != ERR_MP3_NONE) {
             PR_ERR("MP3Decode failed, code is %d", rt);
             break;
@@ -267,7 +281,7 @@ static void app_speaker_play(void)
 
         // 3. play pcm data
         TKL_AUDIO_FRAME_INFO_T frame;
-        frame.pbuf = sg_mp3_ctx.pcm_buf;
+        frame.pbuf = (char *)sg_mp3_ctx.pcm_buf;
         frame.used_size = sg_mp3_ctx.frame_info.outputSamps * 2;
         tkl_ao_put_frame(0, 0, NULL, &frame);
     } while (1);
@@ -289,6 +303,7 @@ static void app_speaker_thread(void *arg)
     app_speaker_init();
 
     for (;;) {
+
         app_speaker_play();
         tal_system_sleep(3 * 1000);
     }

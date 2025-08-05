@@ -38,7 +38,7 @@ OPERATE_RET board_audio_mux_init(void)
 {
     OPERATE_RET rt = OPRT_OK;
     TUYA_GPIO_NUM_E sel_gpio = BOARD_AUDIO_MUX_SEL_PIN;
-    TUYA_GPIO_LEVEL_E sel_level = BOARD_AUDIO_MUX_SEL_MIC_LV;
+    TUYA_GPIO_LEVEL_E sel_level = BOARD_AUDIO_MUX_SEL_LOOPBACK_LV;
 
     // Initialize GPIO pin for audio mux control using base config struct
     TUYA_GPIO_BASE_CFG_T cfg = {
