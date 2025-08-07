@@ -20,6 +20,28 @@ extern "C" {
 /**********************
  *      TYPEDEFS
  **********************/
+// Pet event types for menu actions
+typedef enum {
+    PET_EVENT_FEED_HAMBURGER,
+    PET_EVENT_DRINK_WATER,
+    PET_EVENT_FEED_PIZZA,
+    PET_EVENT_FEED_APPLE,
+    PET_EVENT_FEED_FISH,
+    PET_EVENT_FEED_CARROT,
+    PET_EVENT_FEED_ICE_CREAM,
+    PET_EVENT_FEED_COOKIE,
+    PET_EVENT_TOILET,
+    PET_EVENT_TAKE_BATH,
+    PET_EVENT_SEE_DOCTOR,
+    PET_EVENT_SLEEP,
+    PET_EVENT_WAKE_UP,
+    PET_EVENT_COUNT,
+    PET_STAT_RANDOMIZE
+} pet_event_type_t;
+
+// Pet event callback function type
+typedef void (*pet_event_callback_t)(pet_event_type_t event_type, void *user_data);
+
 typedef struct {
     uint8_t health;    // 0-100
     uint8_t hungry;    // 0-100
@@ -102,6 +124,13 @@ pet_stats_t* menu_system_get_pet_stats(void);
  * Update pet stats for testing
  */
 void menu_system_update_pet_stats_for_testing(void);
+
+/**
+ * Register callback function for pet events
+ * @param callback Function to call when pet events occur
+ * @param user_data User data to pass to the callback
+ */
+void menu_system_register_pet_event_callback(pet_event_callback_t callback, void *user_data);
 
 #ifdef __cplusplus
 } /* extern "C" */

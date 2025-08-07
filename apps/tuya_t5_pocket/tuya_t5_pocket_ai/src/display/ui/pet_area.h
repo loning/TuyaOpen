@@ -38,10 +38,22 @@ void pet_area_start_animation(void);
 void pet_area_stop_animation(void);
 
 /**
- * Get the current pet state
+ * Get the current pet state (legacy support)
  * @return Current pet state
  */
 ai_pet_state_t pet_area_get_state(void);
+
+/**
+ * Set the pet animation state
+ * @param state The animation state to switch to
+ */
+void pet_area_set_animation(ai_pet_state_t state);
+
+/**
+ * Get the current pet animation state
+ * @return Current animation state
+ */
+ai_pet_state_t pet_area_get_animation(void);
 
 #ifdef __cplusplus
 } /* extern "C" */

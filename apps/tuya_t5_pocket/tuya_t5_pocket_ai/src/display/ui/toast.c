@@ -138,6 +138,7 @@ void toast_hide(void)
 
 static void toast_timer_cb(lv_timer_t *timer)
 {
+    (void)timer;
     toast_hide();
 }
 

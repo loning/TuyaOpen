@@ -429,6 +429,8 @@ static void handle_key_press(keyboard_widget_t *keyboard, const char *key_text)
 
 static void handle_special_key(keyboard_widget_t *keyboard, uint32_t key_code)
 {
+    (void)keyboard;
+    (void)key_code;
     // Handle special keys if needed
     // For now, just ignore unknown keys
 }

@@ -25,16 +25,37 @@ extern "C" {
 #define AI_PET_SCREEN_HEIGHT 168
 #endif
 
+// LVGL key codes
+#define KEY_UP    17  // LV_KEY_UP
+#define KEY_LEFT  20  // LV_KEY_LEFT
+#define KEY_DOWN  18  // LV_KEY_DOWN
+#define KEY_RIGHT 19  // LV_KEY_RIGHT
+#define KEY_ENTER 10  // LV_KEY_ENTER
+#define KEY_ESC   27  // LV_KEY_ESC
+#define KEY_I     105 // 'i' key
+
 /**********************
  *      TYPEDEFS
  **********************/
 
 typedef enum {
-    AI_PET_STATE_IDLE,
-    AI_PET_STATE_WALKING,
-    AI_PET_STATE_EATING,
-    AI_PET_STATE_SLEEPING,
-    AI_PET_STATE_PLAYING
+    AI_PET_STATE_NORMAL,        // Normal state (walk, blink, stand)
+    AI_PET_STATE_SLEEP,         // Sleeping animation
+    AI_PET_STATE_DANCE,         // Dancing animation
+    AI_PET_STATE_EAT,           // Eating animation
+    AI_PET_STATE_BATH,          // Bathing animation
+    AI_PET_STATE_TOILET,        // Toilet animation
+    AI_PET_STATE_SICK,          // Sick animation
+    AI_PET_STATE_HAPPY,         // Happy emotion
+    AI_PET_STATE_ANGRY,         // Angry emotion
+    AI_PET_STATE_CRY,           // Crying emotion
+    // Legacy states for backward compatibility
+    AI_PET_STATE_IDLE = AI_PET_STATE_NORMAL,
+    AI_PET_STATE_WALKING = AI_PET_STATE_NORMAL,
+    AI_PET_STATE_BLINKING = AI_PET_STATE_NORMAL,
+    AI_PET_STATE_EATING = AI_PET_STATE_EAT,
+    AI_PET_STATE_SLEEPING = AI_PET_STATE_SLEEP,
+    AI_PET_STATE_PLAYING = AI_PET_STATE_DANCE
 } ai_pet_state_t;
 
 typedef enum {
