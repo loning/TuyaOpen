@@ -71,11 +71,11 @@ static OPERATE_RET __disp_qspi_init(TUYA_SPI_NUM_E port, uint32_t spi_clk)
     TUYA_QSPI_BASE_CFG_T qspi_cfg = {
         .role = TUYA_QSPI_ROLE_MASTER,
         .mode = TUYA_QSPI_MODE0,
-        .baudrate = spi_clk,
+        .freq_hz = spi_clk,
         .is_dma = 1,
     };
 
-    PR_NOTICE("spi init %d\r\n", qspi_cfg.baudrate);
+    PR_NOTICE("spi init %d\r\n", qspi_cfg.freq_hz);
     TUYA_CALL_ERR_RETURN(tkl_qspi_init(port, &qspi_cfg));
 
     return rt;
