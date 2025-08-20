@@ -89,7 +89,7 @@ config ENABLE_MEDIA
     bool
     default y
 
-config ENABLE_IMAGE_CODEC
+config ENABLE_DMA2D
     bool
     default y
 
