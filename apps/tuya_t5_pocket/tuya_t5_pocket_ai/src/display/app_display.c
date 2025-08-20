@@ -143,7 +143,7 @@ OPERATE_RET app_display_init(void)
 
     lv_demo_ai_pocket_pet();
 
-    lv_vendor_start();
+    lv_vendor_start(5, 1024*8);
 
     PR_DEBUG("app_display_init success");
 
