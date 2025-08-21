@@ -47,21 +47,21 @@ typedef struct{
 ***********************variable define**********************
 ***********************************************************/
 #if defined (ATK_T5AI_MINI_BOARD_EX_MODULE_LCD) && (ATK_T5AI_MINI_BOARD_EX_MODULE_LCD ==1)
-// static const ATK_LCD_INFO_T cATK_MD0430R_480272 = {
-//     .id       = ATK_MD0430R_480272_ID,
-//     .width    = ATK_MD0430R_480272_WIDTH,
-//     .height   = ATK_MD0430R_480272_HEIGHT,
-//     .fmt      = ATK_MD0430R_480272_FMT,
-//     .dir      = ATK_MD0430R_480272_ROTATION,
-//     .hsw      = ATK_MD0430R_480272_HSW,
-//     .vsw      = ATK_MD0430R_480272_VSW,
-//     .hbp      = ATK_MD0430R_480272_HBP,
-//     .vbp      = ATK_MD0430R_480272_VBP,
-//     .hfp      = ATK_MD0430R_480272_HFP,
-//     .vfp      = ATK_MD0430R_480272_VFP,
-//     .pclk_hz  = ATK_MD0430R_480272_CLK,
-//     .clk_edge = ATK_MD0430R_480272_CLK_EDGE,
-// };
+static const ATK_LCD_INFO_T cATK_MD0430R_480272 = {
+    .id       = ATK_MD0430R_480272_ID,
+    .width    = ATK_MD0430R_480272_WIDTH,
+    .height   = ATK_MD0430R_480272_HEIGHT,
+    .fmt      = ATK_MD0430R_480272_FMT,
+    .dir      = ATK_MD0430R_480272_ROTATION,
+    .hsw      = ATK_MD0430R_480272_HSW,
+    .vsw      = ATK_MD0430R_480272_VSW,
+    .hbp      = ATK_MD0430R_480272_HBP,
+    .vbp      = ATK_MD0430R_480272_VBP,
+    .hfp      = ATK_MD0430R_480272_HFP,
+    .vfp      = ATK_MD0430R_480272_VFP,
+    .pclk_hz  = ATK_MD0430R_480272_CLK,
+    .clk_edge = ATK_MD0430R_480272_CLK_EDGE,
+};
 
 static const ATK_LCD_INFO_T cATK_MD0430R_800480 = {
     .id      = ATK_MD0430R_800480_ID,
@@ -91,49 +91,49 @@ static const ATK_LCD_INFO_T cATK_MD0430R_800480 = {
  *
  * @return Returns the lcd information if recognized, or NULL if not recognized.
  */
-// static const ATK_LCD_INFO_T *__read_lcd_info(void)
-// {
-//     OPERATE_RET rt = OPRT_OK;
-//     uint8_t idx = 0;
-//     TUYA_GPIO_LEVEL_E r_level = TUYA_GPIO_LEVEL_NONE;   /* Variable to hold GPIO level */
+static const ATK_LCD_INFO_T *__read_lcd_info(void)
+{
+    OPERATE_RET rt = OPRT_OK;
+    uint8_t idx = 0;
+    TUYA_GPIO_LEVEL_E r_level = TUYA_GPIO_LEVEL_NONE;   /* Variable to hold GPIO level */
 
-//     TUYA_GPIO_BASE_CFG_T out_pin_cfg = { /* GPIO configuration */
-//         .mode = TUYA_GPIO_PULLUP,        /* Push-pull mode */
-//         .direct = TUYA_GPIO_INPUT,       /* Input direction */
-//         .level = TUYA_GPIO_LEVEL_NONE    /* Initial level, will be set later */
-//     };
+    TUYA_GPIO_BASE_CFG_T out_pin_cfg = { /* GPIO configuration */
+        .mode = TUYA_GPIO_PULLUP,        /* Push-pull mode */
+        .direct = TUYA_GPIO_INPUT,       /* Input direction */
+        .level = TUYA_GPIO_LEVEL_NONE    /* Initial level, will be set later */
+    };
  
-//     TUYA_CALL_ERR_LOG(tkl_gpio_init(BOARD_GPIO_LCD_ID0, &out_pin_cfg));    /* Initialize GPIO for Red channel */
-//     TUYA_CALL_ERR_LOG(tkl_gpio_init(BOARD_GPIO_LCD_ID1, &out_pin_cfg));    /* Initialize GPIO for Green channel */
-//     TUYA_CALL_ERR_LOG(tkl_gpio_init(BOARD_GPIO_LCD_ID2, &out_pin_cfg));    /* Initialize GPIO for Blue channel */
+    TUYA_CALL_ERR_LOG(tkl_gpio_init(BOARD_GPIO_LCD_ID0, &out_pin_cfg));    /* Initialize GPIO for Red channel */
+    TUYA_CALL_ERR_LOG(tkl_gpio_init(BOARD_GPIO_LCD_ID1, &out_pin_cfg));    /* Initialize GPIO for Green channel */
+    TUYA_CALL_ERR_LOG(tkl_gpio_init(BOARD_GPIO_LCD_ID2, &out_pin_cfg));    /* Initialize GPIO for Blue channel */
 
-//     TUYA_CALL_ERR_LOG(tkl_gpio_read(BOARD_GPIO_LCD_ID0,&r_level));         /* Read the level of Red channel GPIO */
-//     idx = r_level;
-//     TUYA_CALL_ERR_LOG(tkl_gpio_read(BOARD_GPIO_LCD_ID1,&r_level));         /* Read the level of Green channel GPIO */
-//     idx |= r_level << 1;
-//     TUYA_CALL_ERR_LOG(tkl_gpio_read(BOARD_GPIO_LCD_ID2,&r_level));         /* Read the level of Blue channel GPIO */
-//     idx |= r_level << 2;
+    TUYA_CALL_ERR_LOG(tkl_gpio_read(BOARD_GPIO_LCD_ID0,&r_level));         /* Read the level of Red channel GPIO */
+    idx = r_level;
+    TUYA_CALL_ERR_LOG(tkl_gpio_read(BOARD_GPIO_LCD_ID1,&r_level));         /* Read the level of Green channel GPIO */
+    idx |= r_level << 1;
+    TUYA_CALL_ERR_LOG(tkl_gpio_read(BOARD_GPIO_LCD_ID2,&r_level));         /* Read the level of Blue channel GPIO */
+    idx |= r_level << 2;
 
-//     switch (idx) {
-//         case 0: {
-//             return &cATK_MD0430R_480272;                      /* ATK-MD0430R-480272 */
-//         }
-//         case 4:{
-//             return &cATK_MD0430R_800480;                      /* ATK-MD0430R-800480 */
-//         }
-//         default: {
-//             PR_ERR("not find lcd info");
-//             return NULL;
-//         }
-//     }
-// }
+    switch (idx) {
+        case 0: {
+            return &cATK_MD0430R_480272;                      /* ATK-MD0430R-480272 */
+        }
+        case 4:{
+            return &cATK_MD0430R_800480;                      /* ATK-MD0430R-800480 */
+        }
+        default: {
+            PR_ERR("not find lcd info");
+            return NULL;
+        }
+    }
+}
 
 static OPERATE_RET __board_register_display(void)
 {
     OPERATE_RET rt = OPRT_OK;
 
 #if defined(DISPLAY_NAME)
-    ATK_LCD_INFO_T *p_lcd_info = (ATK_LCD_INFO_T *)&cATK_MD0430R_800480;
+    ATK_LCD_INFO_T *p_lcd_info = (ATK_LCD_INFO_T *)__read_lcd_info();
     TDD_DISP_RGB_CFG_T display_cfg;
 
     if(NULL == p_lcd_info) {
