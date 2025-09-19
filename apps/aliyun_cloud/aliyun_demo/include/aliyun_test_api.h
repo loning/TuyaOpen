@@ -4,5 +4,7 @@
 #include "stdint.h"
 
 int32_t aliyun_sdk_test(void);
+void aliyun_sdk_init(void);
+void aliyun_sdk_start(void);
 
 #endif

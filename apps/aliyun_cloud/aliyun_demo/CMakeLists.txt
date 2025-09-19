@@ -37,4 +37,12 @@ target_link_libraries(${EXAMPLE_LIB}
 # Make sure the prebuilt lib is available in the platform lib search dir and included by name
 file(COPY ${TOP_SOURCE_DIR}/src/libaliyun_sdk/prebuilt_libs/libsdk_test.a
      DESTINATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+file(COPY ${TOP_SOURCE_DIR}/src/libaliyun_sdk/prebuilt_libs/libaliyun_sdk.a
+    DESTINATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+file(COPY ${TOP_SOURCE_DIR}/src/libaliyun_sdk/prebuilt_libs/libtinycrypt.a
+    DESTINATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+
+
 set(PLATFORM_NEED_LIBS "${PLATFORM_NEED_LIBS} sdk_test")
+set(PLATFORM_NEED_LIBS "${PLATFORM_NEED_LIBS} aliyun_sdk")
+set(PLATFORM_NEED_LIBS "${PLATFORM_NEED_LIBS} tinycrypt")

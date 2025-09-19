@@ -13,7 +13,6 @@
 #include "lib_c_sdk.h"
 #include "aliyun_test_api.h"
 #include "tal_time_service.h"
-void util_set_log_level(uint8_t log_lv);
 
 #include "cJSON.h"
 #include "netmgr.h"
@@ -56,6 +55,8 @@ tuya_iot_client_t client;
 
 /* Tuya license information (uuid authkey) */
 tuya_iot_license_t license;
+
+#if 0
 
 /* Aliyun HAL test forward declaration */
 static void run_aliyun_sdk_hal_test(void)
@@ -128,6 +129,8 @@ static void run_aliyun_sdk_hal_test(void)
 
     PR_INFO("=== Aliyun SDK HAL Validation Test Complete ===");
 }
+
+#endif
 
 /* Track if Aliyun HAL test has been run after timestamp sync */
 static int aliyun_hal_test_ran = 0;
@@ -206,7 +209,10 @@ void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
         // Run Aliyun HAL test after timestamp is set, only once
         if (!aliyun_hal_test_ran) {
             aliyun_hal_test_ran = 1;
-            run_aliyun_sdk_hal_test();
+            // run_aliyun_sdk_hal_test();
+
+            PR_DEBUG("aliyun sdk initializing");
+            aliyun_sdk_init();
         }
         break;
     case TUYA_EVENT_RESET:
@@ -305,7 +311,7 @@ void user_main(void)
     cJSON_InitHooks(&(cJSON_Hooks){.malloc_fn = tal_malloc, .free_fn = tal_free});
     tal_log_init(TAL_LOG_LEVEL_DEBUG, 1024, (TAL_LOG_OUTPUT_CB)tkl_log_output);
 
-    util_set_log_level(6 /* UTIL_LOG_LV_DEBUG */);
+    // util_set_log_level(6 /* UTIL_LOG_LV_DEBUG */);
     PR_INFO("Aliyun SDK util log level set to DEBUG");
 
     PR_NOTICE("Application information:");
@@ -351,6 +357,7 @@ void user_main(void)
                                 });
     assert(rt == OPRT_OK);
 
+    PR_DEBUG("tuya_iot_init success");
 #if defined(ENABLE_LIBLWIP) && (ENABLE_LIBLWIP == 1)
     TUYA_LwIP_Init();
 #endif
@@ -395,6 +402,8 @@ void user_main(void)
     tuya_iot_start(&client);
 
     reset_netconfig_check();
+
+    aliyun_sdk_start();
 
     for (;;) {
         /* Loop to receive packets, and handles client keepalive */
