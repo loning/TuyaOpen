@@ -22,8 +22,9 @@
 typedef struct {
     DISP_SPI_BASE_CFG_T    cfg;
     TUYA_GPIO_NUM_E        busy_pin;
-    TUYA_DISPLAY_IO_CTRL_T power;       /* Power control pin */
-    bool                   is_sleeping; /* Track sleep state */
+    TUYA_DISPLAY_IO_CTRL_T power;        /* Power control pin */
+    bool                   is_sleeping;  /* Track sleep state */
+    bool                   partial_mode; /* Partial refresh mode flag */
 } DISP_UC8276_DEV_T;
 
 /*****************************************************************************
@@ -52,6 +53,11 @@ static inline void __send_cmd(DISP_UC8276_DEV_T *dev, uint8_t cmd)
 static inline void __send_data(DISP_UC8276_DEV_T *dev, uint8_t data)
 {
     tdd_disp_spi_send_data(&dev->cfg, &data, 1);
+}
+
+static inline void __send_data_buf(DISP_UC8276_DEV_T *dev, const uint8_t *data, uint32_t len)
+{
+    tdd_disp_spi_send_data(&dev->cfg, (uint8_t *)data, len);
 }
 
 /* Wait for BUSY pin to go LOW (idle) with timeout */
@@ -89,7 +95,7 @@ static void __reset(DISP_UC8276_DEV_T *dev)
     }
 }
 
-/* Trigger display update and wait for completion */
+/* Full display update */
 static void __update_display(DISP_UC8276_DEV_T *dev)
 {
     __send_cmd(dev, 0x22);
@@ -98,9 +104,25 @@ static void __update_display(DISP_UC8276_DEV_T *dev)
     __wait_busy(dev);
 }
 
+/* Partial display update (fast, no erase, may have ghosting) */
+static void __update_display_partial(DISP_UC8276_DEV_T *dev)
+{
+    __send_cmd(dev, 0x21);
+    __send_data(dev, 0x00);
+    __send_data(dev, 0x00);
+    __send_cmd(dev, 0x22);
+    __send_data(dev, 0xFC);
+    __send_cmd(dev, 0x20);
+    __wait_busy(dev);
+}
+
 /*****************************************************************************
  * EPD operations
  *****************************************************************************/
+
+/* Forward declarations */
+static void __epd_partial_out(DISP_UC8276_DEV_T *dev);
+static void __epd_partial_in(DISP_UC8276_DEV_T *dev);
 
 static void __epd_init(DISP_UC8276_DEV_T *dev)
 {
@@ -144,6 +166,8 @@ static void __epd_clear(DISP_UC8276_DEV_T *dev)
 {
     const uint32_t size = (EPD_WIDTH / 8) * EPD_HEIGHT;
 
+    __epd_partial_out(dev);
+
     __send_cmd(dev, 0x24);
     for (uint32_t i = 0; i < size; i++) {
         __send_data(dev, 0xFF);
@@ -157,23 +181,72 @@ static void __epd_clear(DISP_UC8276_DEV_T *dev)
     __update_display(dev);
 }
 
-static void __epd_display(DISP_UC8276_DEV_T *dev, const uint8_t *data, uint32_t len)
+__attribute__((unused)) static void __epd_partial_in(DISP_UC8276_DEV_T *dev)
+{
+    if (dev->partial_mode) {
+        return;
+    }
+    dev->partial_mode = true;
+}
+
+__attribute__((unused)) static void __epd_partial_out(DISP_UC8276_DEV_T *dev)
+{
+    if (!dev->partial_mode) {
+        return;
+    }
+    dev->partial_mode = false;
+}
+
+static void __epd_display(DISP_UC8276_DEV_T *dev, const uint8_t *data, uint32_t len, bool use_partial)
 {
     const uint32_t size = (EPD_WIDTH / 8) * EPD_HEIGHT;
 
-    /* Send to both RAM buffers (0x24 and 0x26) for full refresh */
-    /* Invert (~) because LVGL: 1=black, EPD: 0=black */
-    __send_cmd(dev, 0x24);
-    for (uint32_t i = 0; i < size; i++) {
-        __send_data(dev, (i < len) ? ~__reverse_bits(data[i]) : 0xFF);
-    }
+    if (use_partial) {
+        /* Partial refresh mode: fast, no erase, may have ghosting */
+        /* Set RAM area directly */
 
-    __send_cmd(dev, 0x26);
-    for (uint32_t i = 0; i < size; i++) {
-        __send_data(dev, (i < len) ? ~__reverse_bits(data[i]) : 0xFF);
-    }
+        /* Set RAM entry mode (x increase, y increase) */
+        __send_cmd(dev, 0x11);  // Data entry mode
+        __send_data(dev, 0x03); // x increase, y increase: normal mode
 
-    __update_display(dev);
+        /* Set RAM address range for partial refresh (full screen) */
+        __send_cmd(dev, 0x44);  // RAM X range: 0-49 (50 bytes = 400 pixels)
+        __send_data(dev, 0x00); // X start (byte address: 0)
+        __send_data(dev, 0x31); // X end (byte address: 49 = 0x31)
+
+        __send_cmd(dev, 0x45);  // RAM Y range: 0-299
+        __send_data(dev, 0x00); // Y start low
+        __send_data(dev, 0x00); // Y start high
+        __send_data(dev, 0x2B); // Y end low (299 = 0x012B)
+        __send_data(dev, 0x01); // Y end high
+
+        /* Set RAM address counter to start position */
+        __send_cmd(dev, 0x4E); // RAM X counter
+        __send_data(dev, 0x00);
+        __send_cmd(dev, 0x4F);  // RAM Y counter
+        __send_data(dev, 0x00); // Y counter low
+        __send_data(dev, 0x00); // Y counter high
+
+        __send_cmd(dev, 0x24); // DTM1 - Data transmission for partial refresh
+        for (uint32_t i = 0; i < size; i++) {
+            __send_data(dev, (i < len) ? ~__reverse_bits(data[i]) : 0xFF);
+        }
+
+        __update_display_partial(dev);
+    } else {
+        __epd_partial_out(dev);
+        __send_cmd(dev, 0x24);
+        for (uint32_t i = 0; i < size; i++) {
+            __send_data(dev, (i < len) ? ~__reverse_bits(data[i]) : 0xFF);
+        }
+
+        __send_cmd(dev, 0x26);
+        for (uint32_t i = 0; i < size; i++) {
+            __send_data(dev, (i < len) ? ~__reverse_bits(data[i]) : 0xFF);
+        }
+
+        __update_display(dev);
+    }
 }
 
 /* Wake EPD from sleep (power on and reinitialize) */
@@ -191,7 +264,8 @@ static void __epd_wake(DISP_UC8276_DEV_T *dev)
 
     /* Reinitialize display after power on */
     __epd_init(dev);
-    dev->is_sleeping = false;
+    dev->is_sleeping  = false;
+    dev->partial_mode = false;
 }
 
 /* Put EPD to sleep (power off) */
@@ -268,7 +342,7 @@ static OPERATE_RET __tdd_disp_flush(TDD_DISP_DEV_HANDLE_T device, TDL_DISP_FRAME
         return OPRT_INVALID_PARM;
     }
 
-    __epd_display(dev, frame_buff->frame, frame_buff->len);
+    __epd_display(dev, frame_buff->frame, frame_buff->len, true);
 
     if (frame_buff->free_cb) {
         frame_buff->free_cb(frame_buff);
@@ -322,7 +396,8 @@ OPERATE_RET tdd_disp_spi_mono_uc8276_register(char *name, DISP_EINK_UC8276_CFG_T
     disp_dev->cfg.rst_pin   = dev_cfg->rst_pin;
     disp_dev->busy_pin      = dev_cfg->busy_pin;
     disp_dev->power         = dev_cfg->power;
-    disp_dev->is_sleeping   = true; /* Start in sleep state */
+    disp_dev->is_sleeping   = true;  /* Start in sleep state */
+    disp_dev->partial_mode  = false; /* Start with full refresh mode */
 
     /* Fill device info */
     TDD_DISP_DEV_INFO_T disp_dev_info = {
