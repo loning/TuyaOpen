@@ -18,7 +18,6 @@
 #include "tdl_display_manage.h"
 
 #if defined(ENABLE_DMA2D) && (ENABLE_DMA2D == 1)
-#include "tkl_dma2d.h"
 #include "tal_dma2d.h"
 #endif
 
@@ -39,8 +38,6 @@
 
 #define LV_DISP_FB_MAX_NUM    3
 
-#define USE_TAL_DMA2D 1
-
 /**********************
  *      TYPEDEFS
  **********************/
@@ -48,7 +45,6 @@ typedef struct {
     uint8_t                is_used;
     TDL_DISP_FRAME_BUFF_T *fb;
 }LV_DISP_FRAME_BUFF_T;
-
 
 /**********************
  *  STATIC PROTOTYPES
@@ -63,28 +59,15 @@ static uint8_t * __disp_draw_buf_align_alloc(uint32_t size_bytes);
 
 static lv_color_format_t __disp_get_lv_color_format(TUYA_DISPLAY_PIXEL_FMT_E pixel_fmt);
 
-static uint8_t __disp_get_pixels_size_bytes(TUYA_DISPLAY_PIXEL_FMT_E pixel_fmt);
-
-#if defined(ENABLE_DMA2D) && (ENABLE_DMA2D == 1)
-static void __disp_dma2d_init(void);
-#endif
-
-
 /**********************
  *  STATIC VARIABLES
  **********************/
 static TDL_DISP_HANDLE_T sg_tdl_disp_hdl = NULL;
 static TDL_DISP_DEV_INFO_T sg_display_info;
-
-static LV_DISP_FRAME_BUFF_T sg_disp_fb_arr[LV_DISP_FB_MAX_NUM];
-static uint8_t sg_disp_fb_num = 0;
-static bool sg_is_wait_disp_free_fb = false;
-static SEM_HANDLE sg_disp_fb_free_sem = NULL;
-static TDL_DISP_FRAME_BUFF_T *sg_p_display_fb = NULL; 
-
-static uint8_t *sg_rotate_buf = NULL;
-
 static MUTEX_HANDLE sg_disp_flush_mutex = NULL;
+static uint8_t *sg_rotate_buf = NULL;
+static TDL_DISP_FRAME_BUFF_T *sg_p_display_fb = NULL;
+static TDL_FB_MANAGE_HANDLE_T sg_disp_fb_manage = NULL;
 /**********************
  *      MACROS
  **********************/
@@ -138,21 +121,19 @@ void lv_port_disp_init(char *device)
 
     lv_display_set_buffers(disp, buf_2_1, buf_2_2, buf_len, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
-    if (sg_display_info.rotation != TUYA_DISPLAY_ROTATION_0) {
-        if (sg_display_info.rotation == TUYA_DISPLAY_ROTATION_90) {
-            lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);
-        }else if (sg_display_info.rotation == TUYA_DISPLAY_ROTATION_180){
-            lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_180);
-        }else if(sg_display_info.rotation == TUYA_DISPLAY_ROTATION_270){
-            lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
-        }
+    if (sg_display_info.rotation == TUYA_DISPLAY_ROTATION_90) {
+        lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);
+    }else if (sg_display_info.rotation == TUYA_DISPLAY_ROTATION_180){
+        lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_180);
+    }else if(sg_display_info.rotation == TUYA_DISPLAY_ROTATION_270){
+        lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);
+    }
 
-        PR_NOTICE("rotation:%d", sg_display_info.rotation);
+    PR_NOTICE("rotation:%d", sg_display_info.rotation);
 
-        sg_rotate_buf = __disp_draw_buf_align_alloc(buf_len);
-        if (sg_rotate_buf == NULL) {
-            PR_ERR("lvgl rotate buffer malloc fail!\n");
-        }
+    sg_rotate_buf = __disp_draw_buf_align_alloc(buf_len);
+    if (sg_rotate_buf == NULL) {
+        PR_ERR("lvgl rotate buffer malloc fail!\n");
     }
 }
 
@@ -166,165 +147,14 @@ void lv_port_disp_deinit(void)
  *   STATIC FUNCTIONS
  **********************/
 #if defined(ENABLE_DMA2D) && (ENABLE_DMA2D == 1)
-#if defined(USE_TAL_DMA2D) && (USE_TAL_DMA2D == 1)
 static TAL_DMA2D_HANDLE_T sg_lvgl_dma2d_hdl = NULL;
-static bool sg_is_wait_dma2d = false;
-
-static void __disp_dma2d_init(void)
-{
-    if (NULL == sg_lvgl_dma2d_hdl) {
-        tal_dma2d_init(&sg_lvgl_dma2d_hdl);
-    }
-    return;
-}
-
-static void __wait_dma2d_trans_finish(void)
-{
-    if (sg_lvgl_dma2d_hdl && sg_is_wait_dma2d) {
-        tal_dma2d_wait_finish(sg_lvgl_dma2d_hdl, 1000);
-        sg_is_wait_dma2d = false;
-    }
-}
-
-static void __dma2d_drawbuffer_memcpy_syn(const lv_area_t * area, uint8_t * px_map, \
-    lv_color_format_t cf, TDL_DISP_FRAME_BUFF_T *fb)
-{
-    OPERATE_RET rt = OPRT_OK;
-
-    if (NULL == sg_lvgl_dma2d_hdl) {
-        return;
-    }
-
-    TKL_DMA2D_FRAME_INFO_T in_frame = {0};
-    TKL_DMA2D_FRAME_INFO_T out_frame = {0};
-
-    if (area == NULL || px_map == NULL || fb == NULL) {
-        PR_ERR("Invalid parameter");
-        return;
-    }
-
-    // Perform memory copy based on color format
-    switch (cf) {
-        case LV_COLOR_FORMAT_RGB565:
-            in_frame.type  = TUYA_FRAME_FMT_RGB565;
-            out_frame.type = TUYA_FRAME_FMT_RGB565;
-            break;
-        case LV_COLOR_FORMAT_RGB888:
-            in_frame.type  = TUYA_FRAME_FMT_RGB888;
-            out_frame.type = TUYA_FRAME_FMT_RGB888;
-            break;
-        default:
-            PR_ERR("Unsupported color format");
-            return;
-    }
-
-    in_frame.width  = area->x2 - area->x1 + 1;
-    in_frame.height = area->y2 - area->y1 + 1;
-    in_frame.pbuf   = px_map;
-    in_frame.axis.x_axis   = 0;
-    in_frame.axis.y_axis   = 0;
-    in_frame.width_cp      = 0;
-    in_frame.height_cp     = 0;
-
-    out_frame.width  = fb->width;
-    out_frame.height = fb->height;
-    out_frame.pbuf   = fb->frame;
-    out_frame.axis.x_axis   = area->x1;
-    out_frame.axis.y_axis   = area->y1;
-
-    rt = tal_dma2d_memcpy(sg_lvgl_dma2d_hdl, &in_frame, &out_frame);
-    if (rt == OPRT_OK) {
-        sg_is_wait_dma2d = true;
-        __wait_dma2d_trans_finish();
-    }
-}
-
-static void __dma2d_framebuffer_memcpy_async(TDL_DISP_DEV_INFO_T *dev_info,\
-                                             uint8_t *dst_frame,\
-                                             uint8_t *src_frame)
-{
-    OPERATE_RET rt = OPRT_OK;
-
-    if (NULL == sg_lvgl_dma2d_hdl) {
-        return;
-    }
-
-    TKL_DMA2D_FRAME_INFO_T in_frame = {0};
-    TKL_DMA2D_FRAME_INFO_T out_frame = {0};
-
-    switch (dev_info->fmt) {
-        case TUYA_PIXEL_FMT_RGB565:
-            in_frame.type  = TUYA_FRAME_FMT_RGB565;
-            out_frame.type = TUYA_FRAME_FMT_RGB565;
-            break;
-        case TUYA_PIXEL_FMT_RGB888:
-            in_frame.type  = TUYA_FRAME_FMT_RGB888;
-            out_frame.type = TUYA_FRAME_FMT_RGB888;
-            break;
-        default:
-            PR_ERR("Unsupported color format");
-            return;
-    }
-
-
-    in_frame.type  = TUYA_FRAME_FMT_RGB565;
-    in_frame.width  = dev_info->width;
-    in_frame.height = dev_info->height;
-    in_frame.pbuf   = src_frame;
-    in_frame.axis.x_axis   = 0;
-    in_frame.axis.y_axis   = 0;
-    in_frame.width_cp      = 0;
-    in_frame.height_cp     = 0;
-    
-    out_frame.type = TUYA_FRAME_FMT_RGB565;
-    out_frame.width  = dev_info->width;
-    out_frame.height = dev_info->height;
-    out_frame.pbuf   = dst_frame;
-    out_frame.axis.x_axis   = 0;
-    out_frame.axis.y_axis   = 0;
-    out_frame.width_cp      = 0;
-    out_frame.height_cp     = 0;
-
-    rt = tal_dma2d_memcpy(sg_lvgl_dma2d_hdl, &in_frame, &out_frame);
-    if (rt == OPRT_OK) {
-        sg_is_wait_dma2d = true;
-    }
-}
-#else
-static SEM_HANDLE sg_dma2d_finish_sem = NULL;
-static bool sg_is_wait_dma2d = false;
-static void __disp_dma2d_event_cb(TUYA_DMA2D_IRQ_E type, VOID_T *args)
-{
-    tal_semaphore_post(sg_dma2d_finish_sem);
-}
-
-static void __disp_dma2d_init(void)
-{
-    tal_semaphore_create_init(&sg_dma2d_finish_sem, 0, 1);
-
-    TUYA_DMA2D_BASE_CFG_T cfg = {
-        .cb = __disp_dma2d_event_cb,
-    };
-
-    tkl_dma2d_init(&cfg);
-}
-
-static void __wait_dma2d_trans_finish(void)
-{
-    OPERATE_RET ret = OPRT_OK;
-
-    if(sg_dma2d_finish_sem && sg_is_wait_dma2d) {
-        ret = tal_semaphore_wait(sg_dma2d_finish_sem, 1000);
-        if(ret != OPRT_OK) {
-            PR_ERR("wait dma2d finish failed, rt: %d", ret);
-        }
-        sg_is_wait_dma2d = false;
-    }
-}
-
 static void __dma2d_drawbuffer_memcpy_syn(const lv_area_t * area, uint8_t * px_map, \
                                           lv_color_format_t cf, TDL_DISP_FRAME_BUFF_T *fb)
 {
+    if (NULL == sg_lvgl_dma2d_hdl) {
+        return;
+    }
+
     TKL_DMA2D_FRAME_INFO_T in_frame = {0};
     TKL_DMA2D_FRAME_INFO_T out_frame = {0};
 
@@ -359,22 +189,22 @@ static void __dma2d_drawbuffer_memcpy_syn(const lv_area_t * area, uint8_t * px_m
     out_frame.width  = fb->width;
     out_frame.height = fb->height;
     out_frame.pbuf   = fb->frame;
-
     out_frame.axis.x_axis   = area->x1;
     out_frame.axis.y_axis   = area->y1;
 
+    tal_dma2d_memcpy(sg_lvgl_dma2d_hdl, &in_frame, &out_frame);
 
-    tkl_dma2d_memcpy(&in_frame, &out_frame);
-
-    sg_is_wait_dma2d = true;
-
-    __wait_dma2d_trans_finish();
+    tal_dma2d_wait_finish(sg_lvgl_dma2d_hdl, 1000);
 }
 
 static void __dma2d_framebuffer_memcpy_async(TDL_DISP_DEV_INFO_T *dev_info,\
                                              uint8_t *dst_frame,\
                                              uint8_t *src_frame)
 {
+    if (NULL == sg_lvgl_dma2d_hdl) {
+        return;
+    }
+
     TKL_DMA2D_FRAME_INFO_T in_frame = {0};
     TKL_DMA2D_FRAME_INFO_T out_frame = {0};
 
@@ -392,8 +222,6 @@ static void __dma2d_framebuffer_memcpy_async(TDL_DISP_DEV_INFO_T *dev_info,\
             return;
     }
 
-
-    in_frame.type  = TUYA_FRAME_FMT_RGB565;
     in_frame.width  = dev_info->width;
     in_frame.height = dev_info->height;
     in_frame.pbuf   = src_frame;
@@ -402,7 +230,6 @@ static void __dma2d_framebuffer_memcpy_async(TDL_DISP_DEV_INFO_T *dev_info,\
     in_frame.width_cp      = 0;
     in_frame.height_cp     = 0;
     
-    out_frame.type = TUYA_FRAME_FMT_RGB565;
     out_frame.width  = dev_info->width;
     out_frame.height = dev_info->height;
     out_frame.pbuf   = dst_frame;
@@ -411,131 +238,28 @@ static void __dma2d_framebuffer_memcpy_async(TDL_DISP_DEV_INFO_T *dev_info,\
     out_frame.width_cp      = 0;
     out_frame.height_cp     = 0;
 
-    tkl_dma2d_memcpy(&in_frame, &out_frame);
-
-    sg_is_wait_dma2d = true;
+    tal_dma2d_memcpy(sg_lvgl_dma2d_hdl, &in_frame, &out_frame);
 }
 #endif
-#endif
-static void disp_frame_buff_free(TDL_DISP_FRAME_BUFF_T *frame_buff)
-{
-    if(NULL == frame_buff) {
-        return;
-    }
-
-    for (uint8_t i = 0; i < sg_disp_fb_num; i++) {
-        if(sg_disp_fb_arr[i].fb == frame_buff) {
-            sg_disp_fb_arr[i].is_used = 0;
-            if(sg_is_wait_disp_free_fb) {
-                sg_is_wait_disp_free_fb = false;
-                tal_semaphore_post(sg_disp_fb_free_sem);
-            }
-            return;
-        }
-    }
-
-    PR_ERR("frame buffer not found");
-}
-
-static TDL_DISP_FRAME_BUFF_T *disp_get_free_frame_buff(void)
-{
-    for (uint8_t i = 0; i < sg_disp_fb_num; i++) {
-        if(0 == sg_disp_fb_arr[i].is_used) {
-            return sg_disp_fb_arr[i].fb;
-        }
-    }
-
-    sg_is_wait_disp_free_fb = true;
-    tal_semaphore_wait(sg_disp_fb_free_sem, SEM_WAIT_FOREVER);
-
-    for (uint8_t i = 0; i < sg_disp_fb_num; i++) {
-        if(0 == sg_disp_fb_arr[i].is_used) {
-            return sg_disp_fb_arr[i].fb;
-        }
-    }
-
-    PR_ERR("no free frame buffer available");
-
-    return NULL;
-}
-static void disp_set_frame_buff_used(TDL_DISP_FRAME_BUFF_T *fb)
-{
-    if(NULL == fb) {
-        return;
-    }
-
-    for (uint8_t i = 0; i < sg_disp_fb_num; i++) {
-        if(sg_disp_fb_arr[i].fb == fb) {
-            sg_disp_fb_arr[i].is_used = 1;
-            return;
-        }
-    }
-
-    PR_ERR("frame buffer not found");
-}
 
 static void disp_frame_buff_init(TUYA_DISPLAY_PIXEL_FMT_E fmt, uint16_t width, uint16_t height, bool has_vram)
 {
     OPERATE_RET rt = OPRT_OK;
-    uint8_t per_pixel_byte = 0;
-    uint32_t frame_len = 0;
+    uint8_t disp_fb_num = 0;
 
-    if(fmt == TUYA_PIXEL_FMT_MONOCHROME) {
-        frame_len = (width + 7) / 8 * height;
-    } else if(fmt == TUYA_PIXEL_FMT_I2){
-        frame_len = (width + 3) / 4 * height;
-    }else {
-        per_pixel_byte = __disp_get_pixels_size_bytes(fmt);
-        frame_len = width * height * per_pixel_byte;
-    }
-
-    rt = tal_semaphore_create_init(&sg_disp_fb_free_sem, 0 ,1);
-    if(rt != OPRT_OK) {
-        PR_ERR("create semaphore failed, rt: %d", rt);
-        return;
-    }
+    TUYA_CALL_ERR_LOG(tdl_disp_fb_manage_init(&sg_disp_fb_manage));
 
 #if defined(ENABLE_LVGL_DUAL_DISP_BUFF) && (ENABLE_LVGL_DUAL_DISP_BUFF == 1)
-    sg_disp_fb_num = 2 + (has_vram ? 0 : 1);
+    disp_fb_num = 2 + (has_vram ? 0 : 1);
 #else
-    sg_disp_fb_num = 1 + (has_vram ? 0 : 1);
+    disp_fb_num = 1 + (has_vram ? 0 : 1);
 #endif
 
-    for (uint8_t i = 0; i < sg_disp_fb_num; i++) {
-        sg_disp_fb_arr[i].is_used = 0;
-
-        sg_disp_fb_arr[i].fb = tdl_disp_create_frame_buff(DISP_FB_TP_PSRAM, frame_len);
-        if(sg_disp_fb_arr[i].fb == NULL) {
-            PR_ERR("create display frame buff failed");
-            return;
-        }
-
-        sg_disp_fb_arr[i].fb->fmt    = fmt;
-        sg_disp_fb_arr[i].fb->width  = width;
-        sg_disp_fb_arr[i].fb->height = height;
-
-        sg_disp_fb_arr[i].fb->free_cb = disp_frame_buff_free;
+    for(uint8_t i=0; i<disp_fb_num; i++) {
+        TUYA_CALL_ERR_LOG(tdl_disp_fb_manage_add(sg_disp_fb_manage, fmt, width, height));
     }
 
-    sg_p_display_fb = disp_get_free_frame_buff();
-}
-
-static void disp_frame_buff_deinit(void)
-{
-    if(sg_disp_fb_free_sem) {
-        tal_semaphore_release(sg_disp_fb_free_sem);
-        sg_disp_fb_free_sem = NULL;
-    }
-
-    for (uint8_t i = 0; i < sg_disp_fb_num; i++) {
-        if(sg_disp_fb_arr[i].fb) {
-            tdl_disp_free_frame_buff(sg_disp_fb_arr[i].fb);
-        }
-    }
-    
-    memset(sg_disp_fb_arr, 0, sizeof(sg_disp_fb_arr));
-
-    sg_disp_fb_num = 0;
+    sg_p_display_fb = tdl_disp_get_free_fb(sg_disp_fb_manage);
 }
 
 /*Initialize your display and the required peripherals.*/
@@ -569,7 +293,7 @@ static void disp_init(char *device)
                          sg_display_info.height, sg_display_info.has_vram);
 
 #if defined(ENABLE_DMA2D) && (ENABLE_DMA2D == 1)
-    __disp_dma2d_init();
+    tal_dma2d_init(&sg_lvgl_dma2d_hdl);
 #endif
 }
 
@@ -603,20 +327,6 @@ static lv_color_format_t __disp_get_lv_color_format(TUYA_DISPLAY_PIXEL_FMT_E pix
             return LV_COLOR_FORMAT_RGB565; // LVGL does not support monochrome/I2 directly, use RGB565 as a workaround
         default:
             return LV_COLOR_FORMAT_RGB565;
-    }
-}
-
-static uint8_t __disp_get_pixels_size_bytes(TUYA_DISPLAY_PIXEL_FMT_E pixel_fmt)
-{
-    switch (pixel_fmt) {
-        case TUYA_PIXEL_FMT_RGB565:
-            return 2;
-        case TUYA_PIXEL_FMT_RGB666:
-            return 3;
-        case TUYA_PIXEL_FMT_RGB888:
-            return 3;
-        default:
-            return 0;
     }
 }
 
@@ -687,12 +397,12 @@ static void __disp_fill_display_framebuffer(const lv_area_t * area, uint8_t * px
         }
 
 #if defined(ENABLE_DMA2D) && (ENABLE_DMA2D == 1)
-        __wait_dma2d_trans_finish();
+        tal_dma2d_wait_finish(sg_lvgl_dma2d_hdl, 1000);
 
         __dma2d_drawbuffer_memcpy_syn(area, px_map, cf, fb);
 #else
         uint8_t *color_ptr = px_map;
-        uint8_t per_pixel_byte = __disp_get_pixels_size_bytes(fb->fmt);
+        uint8_t per_pixel_byte = (tdl_disp_get_fmt_bpp(fb->fmt) + 7) / 8;
         int32_t width = lv_area_get_width(area);
 
         offset = (area->y1 * fb->width + area->x1) * per_pixel_byte;
@@ -722,7 +432,7 @@ static void disp_deinit(void)
     tdl_disp_dev_close(sg_tdl_disp_hdl);
     sg_tdl_disp_hdl = NULL;
 
-    disp_frame_buff_deinit();
+    tdl_disp_fb_manage_release(&sg_disp_fb_manage);
 }
 
 volatile bool disp_flush_enabled = true;
@@ -731,35 +441,33 @@ volatile bool disp_flush_enabled = true;
  */
 void disp_enable_update(void)
 {
-    if (NULL != sg_disp_flush_mutex) {
-        tal_mutex_lock(sg_disp_flush_mutex);
+    tal_mutex_lock(sg_disp_flush_mutex);
+
+    if(sg_p_display_fb) {
+        tdl_disp_dev_flush(sg_tdl_disp_hdl, sg_p_display_fb);
+
+        TDL_DISP_FRAME_BUFF_T *next_fb = tdl_disp_get_free_fb(sg_disp_fb_manage);
+        if(next_fb &&  next_fb != sg_p_display_fb) {
+            __disp_framebuffer_memcpy(&sg_display_info, next_fb->frame,\
+                                       sg_p_display_fb->frame, sg_p_display_fb->len);
+            sg_p_display_fb = next_fb;
+        }
     }
 
     disp_flush_enabled = true;
 
-    if (NULL != sg_disp_flush_mutex) {
-        tal_mutex_unlock(sg_disp_flush_mutex);
-    }
+    tal_mutex_unlock(sg_disp_flush_mutex);
 }
 
 /* Disable updating the screen (the flushing process) when disp_flush() is called by LVGL
  */
 void disp_disable_update(void)
 {
-    if (NULL != sg_disp_flush_mutex) {
-        tal_mutex_lock(sg_disp_flush_mutex);
-    }
+    tal_mutex_lock(sg_disp_flush_mutex);
 
     disp_flush_enabled = false;
 
-    if (NULL != sg_disp_flush_mutex) {
-        tal_mutex_unlock(sg_disp_flush_mutex);
-    }
-
-    // Wait for any pending DMA2D operation to complete
-    while (sg_is_wait_dma2d) {
-        tal_system_sleep(5);
-    }
+    tal_mutex_unlock(sg_disp_flush_mutex);
 }
 
 /**
@@ -781,16 +489,13 @@ static void disp_flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px
     uint8_t *color_ptr = px_map;
     lv_area_t *target_area = (lv_area_t *)area;
 
-    if (NULL != sg_disp_flush_mutex) {
-        tal_mutex_lock(sg_disp_flush_mutex);
-    }
+    tal_mutex_lock(sg_disp_flush_mutex);
 
     if (disp_flush_enabled) {
-
         lv_color_format_t cf = lv_display_get_color_format(disp);
+        lv_display_rotation_t rotation = lv_display_get_rotation(disp);
 
-        if(sg_rotate_buf) {
-            lv_display_rotation_t rotation = lv_display_get_rotation(disp);
+        if(rotation != LV_DISPLAY_ROTATION_0 && sg_rotate_buf != NULL) {
             lv_area_t rotated_area;
 
             rotated_area.x1 = area->x1;
@@ -820,11 +525,9 @@ static void disp_flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px
         __disp_fill_display_framebuffer(target_area, color_ptr, cf, sg_p_display_fb);
 
         if (lv_display_flush_is_last(disp)) {
-
-            disp_set_frame_buff_used(sg_p_display_fb);
             tdl_disp_dev_flush(sg_tdl_disp_hdl, sg_p_display_fb);
 
-            TDL_DISP_FRAME_BUFF_T *next_fb = disp_get_free_frame_buff();
+            TDL_DISP_FRAME_BUFF_T *next_fb = tdl_disp_get_free_fb(sg_disp_fb_manage);
             if(next_fb &&  next_fb != sg_p_display_fb) {
                 __disp_framebuffer_memcpy(&sg_display_info, next_fb->frame, sg_p_display_fb->frame, sg_p_display_fb->len);
                 sg_p_display_fb = next_fb;
@@ -834,13 +537,7 @@ static void disp_flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px
 
     lv_display_flush_ready(disp);
 
-    if (sg_is_wait_dma2d && false == disp_flush_enabled) {
-        __wait_dma2d_trans_finish();
-    }
-
-    if (NULL != sg_disp_flush_mutex) {
-        tal_mutex_unlock(sg_disp_flush_mutex);
-    }
+    tal_mutex_unlock(sg_disp_flush_mutex);
 }
 
 #else /*Enable this file at the top*/
