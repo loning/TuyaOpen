@@ -109,7 +109,7 @@ static void tuya_app_thread(void *arg)
 
 void tuya_app_main(void)
 {
-    THREAD_CFG_T thrd_param = {1024 * 4, 4, "tuya_app_main"};
+    THREAD_CFG_T thrd_param = {1024 * 4, 4, "tuya_app_main", 0};
     tal_thread_create_and_start(&ty_app_thread, NULL, NULL, tuya_app_thread, NULL, &thrd_param);
 }
 #endif
