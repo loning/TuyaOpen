@@ -42,6 +42,41 @@
 ***********************************************************/
 
 /**
+ * @brief Convert LVGL path to actual file system path
+ * @param lvgl_path LVGL path (e.g., "/badge/xxx.png" from "S:/badge/xxx.png")
+ * @param fs_path Output buffer for file system path
+ * @param size Size of output buffer
+ * @return 0 on success, -1 on error
+ * 
+ * @note LVGL removes the drive letter prefix "S:", so we receive:
+ *       - Input:  "/badge/image.png"
+ *       - Output: "/sdcard/badge/image.png"
+ */
+static int ui_fs_convert_path(const char *lvgl_path, char *fs_path, size_t size)
+{
+    if (lvgl_path == NULL || fs_path == NULL || size < strlen(SDCARD_MOUNT_PATH) + 2) {
+        return -1;
+    }
+    
+    // If path already starts with SDCARD_MOUNT_PATH, use it directly
+    if (strncmp(lvgl_path, SDCARD_MOUNT_PATH, strlen(SDCARD_MOUNT_PATH)) == 0) {
+        strncpy(fs_path, lvgl_path, size - 1);
+        fs_path[size - 1] = '\0';
+        return 0;
+    }
+    
+    // If path starts with '/', prepend SDCARD_MOUNT_PATH
+    if (lvgl_path[0] == '/') {
+        snprintf(fs_path, size, "%s%s", SDCARD_MOUNT_PATH, lvgl_path);
+        return 0;
+    }
+    
+    // If path doesn't start with '/', prepend SDCARD_MOUNT_PATH and '/'
+    snprintf(fs_path, size, "%s/%s", SDCARD_MOUNT_PATH, lvgl_path);
+    return 0;
+}
+
+/**
  * @brief Check if the file system is ready
  */
 static bool ui_fs_ready_cb(lv_fs_drv_t *drv)
@@ -68,7 +103,25 @@ static void *ui_fs_open_cb(lv_fs_drv_t *drv, const char *path, lv_fs_mode_t mode
         return NULL;
     }
     
-    TUYA_FILE file = tkl_fopen(path, mode_str);
+    // Convert LVGL path to actual file system path
+    char fs_path[256];
+    if (ui_fs_convert_path(path, fs_path, sizeof(fs_path)) != 0) {
+        PR_ERR("Failed to convert path: %s", path);
+        return NULL;
+    }
+    
+    // Only log first few opens to reduce spam
+    static int open_count = 0;
+    if (open_count < 5) {
+        PR_DEBUG("ui_fs_open_cb: LVGL[%s] -> FS[%s], mode[%d]", path, fs_path, mode);
+        open_count++;
+    }
+    
+    TUYA_FILE file = tkl_fopen(fs_path, mode_str);
+    if (file == NULL) {
+        PR_WARN("Failed to open file: %s", fs_path);
+    }
+    
     return (void *)file;
 }
 
@@ -96,6 +149,7 @@ static lv_fs_res_t ui_fs_read_cb(lv_fs_drv_t *drv, void *file_p, void *buf, uint
     int bytes_read = tkl_fread(buf, btr, file);
     
     if (bytes_read < 0) {
+        PR_ERR("ui_fs_read_cb: read failed, requested=%u, got=%d", btr, bytes_read);
         if (br) *br = 0;
         return LV_FS_RES_UNKNOWN;
     }
@@ -176,10 +230,20 @@ static void *ui_fs_dir_open_cb(lv_fs_drv_t *drv, const char *path)
 {
     (void)drv;
     
+    // Convert LVGL path to actual file system path
+    char fs_path[256];
+    if (ui_fs_convert_path(path, fs_path, sizeof(fs_path)) != 0) {
+        PR_ERR("Failed to convert directory path: %s", path);
+        return NULL;
+    }
+    
+    PR_DEBUG("ui_fs_dir_open_cb: LVGL[%s] -> FS[%s]", path, fs_path);
+    
     TUYA_DIR dir;
-    int ret = tkl_dir_open(path, &dir);
+    int ret = tkl_dir_open(fs_path, &dir);
     
     if (ret != 0) {
+        PR_WARN("Failed to open directory: %s", fs_path);
         return NULL;
     }
     
@@ -271,7 +335,16 @@ void ui_fs_init(void)
     // Register the driver
     lv_fs_drv_register(&drv);
     
-    PR_DEBUG("LVGL file system driver registered with letter 'S'");
+    PR_DEBUG("==================================================");
+    PR_DEBUG("LVGL file system driver registered successfully!");
+    PR_DEBUG("  Driver letter: 'S'");
+    PR_DEBUG("  Mount point: %s", SDCARD_MOUNT_PATH);
+    PR_DEBUG("  Path mapping:");
+    PR_DEBUG("    LVGL path: S:/badge/image.png");
+    PR_DEBUG("    Real path: %s/badge/image.png", SDCARD_MOUNT_PATH);
+    PR_DEBUG("  Usage example:");
+    PR_DEBUG("    lv_image_set_src(img, \"S:/badge/image.png\");");
+    PR_DEBUG("==================================================");
 }
 
 

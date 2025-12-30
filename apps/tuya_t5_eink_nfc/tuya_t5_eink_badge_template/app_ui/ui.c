@@ -42,6 +42,8 @@ void ui_init(void)
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_disp_load_scr(ui_home_screen);
 
+    ui_fs_init();
+
     // Register status event
     ui_status_event_init();
 

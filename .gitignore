@@ -6,6 +6,7 @@ __pycache__
 
 CMakeCache.txt
 /CMakeFiles
+compile_commands.json
 
 /.venv
 /tmp
@@ -26,3 +27,4 @@ dist
 /.set_example
 /dist
 *monitor.log
+

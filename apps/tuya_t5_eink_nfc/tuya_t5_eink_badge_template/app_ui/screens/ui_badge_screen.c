@@ -7,6 +7,8 @@
 #include <src/widgets/label/lv_label.h>
 #include <string.h>
 
+#include "tal_api.h"
+
 /**************** Position macros ************************/
 #define COMPANY_NAME_POS_X          32      // X position: center of left container (container width 64 / 2)
 #define COMPANY_NAME_POS_Y          10      // Y position: offset from top
