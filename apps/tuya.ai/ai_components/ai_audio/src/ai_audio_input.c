@@ -19,6 +19,7 @@
 #include "tdl_audio_manage.h"
 #include "stop_watch.h"
 #include "ai_audio_input.h"
+#include "ai_user_event.h"
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
@@ -117,6 +118,11 @@ static void __audio_frame_put(TDL_AUDIO_FRAME_FORMAT_E type, TDL_AUDIO_STATUS_E 
         tuya_ring_buff_write(sg_recorder->ringbuf, data, (uint16_t)data_len);
         tal_mutex_unlock(sg_recorder->mutex);
     }    
+
+    AI_NOTIFY_MIC_DATA_T mic_data;
+    mic_data.data = data;
+    mic_data.data_len = data_len;
+    ai_user_event_notify(AI_USER_EVT_MIC_DATA, (void*)&mic_data);
 
     return;
 }

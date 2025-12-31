@@ -68,6 +68,7 @@ static __attribute__((unused)) void __app_display_msg_handle(DISPLAY_MSG_T *msg_
         // LISTENING
         // SPEAKING
         ui_set_device_status(msg_data->data);
+        PR_DEBUG("app_display_msg_handle: status: %s", msg_data->data);
     } break;
     case TY_DISPLAY_TP_USER_MSG: {
         ui_set_user_msg(msg_data->data);

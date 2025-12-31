@@ -34,6 +34,7 @@ typedef enum {
     AI_USER_EVT_ASR_EMPTY = 0,
     AI_USER_EVT_ASR_OK,
     AI_USER_EVT_ASR_ERROR,
+    AI_USER_EVT_MIC_DATA,
     AI_USER_EVT_TTS_PRE,
     AI_USER_EVT_TTS_START,
     AI_USER_EVT_TTS_DATA,
@@ -89,6 +90,11 @@ typedef struct {
     uint16_t camera_width;
     uint16_t camera_height;
 } AI_NOTIFY_VIDEO_START_T;
+
+typedef struct {
+    uint8_t *data;
+    uint32_t data_len;
+} AI_NOTIFY_MIC_DATA_T;
 
 /***********************************************************
 ********************function declaration********************

@@ -8,6 +8,7 @@ set(APP_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
 set(APP_MODULE_SRCS)
 list(APPEND APP_MODULE_SRCS
+        ${APP_MODULE_PATH}/app_ui_helper.c
         ${APP_MODULE_PATH}/app_display.c
         ${APP_MODULE_PATH}/tuya_lvgl.c
     )

@@ -5,7 +5,7 @@
  * @date 2025-03-25
  */
 
-
+#include "tuya_cloud_types.h"
 #include "tal_api.h"
 
 #include "ai_chat_main.h"
@@ -71,7 +71,7 @@ const CHAT_WORK_MODE_INFO_T *cWORK_MODE_INFO_LIST[] = {
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
-#if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)
+#if (defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)) || (defined(ENABLE_CHAT_DISPLAY2) && (ENABLE_CHAT_DISPLAY2 == 1))
 static void __ai_chat_handle_state(AI_MODE_STATE_E state)
 {
     switch (state) {
@@ -99,7 +99,9 @@ static void __ai_chat_handle_event(AI_NOTIFY_EVENT_T *event)
         return;
     }
 
-    PR_DEBUG("ai chat event type: %d", event->type);
+    if (event->type != AI_USER_EVT_MIC_DATA) {
+        PR_DEBUG("ai chat event type: %d", event->type);
+    }
 
     switch(event->type) {
     case AI_USER_EVT_ASR_OK:{
@@ -177,6 +179,22 @@ static void __ai_chat_handle_event(AI_NOTIFY_EVENT_T *event)
     break;
     case AI_USER_EVT_VEDIO_DISPLAY_END:
         app_display_camera_end();
+    break;
+    case AI_USER_EVT_MIC_DATA:{
+        #if defined(ENABLE_CHAT_DISPLAY2) && (ENABLE_CHAT_DISPLAY2 == 1)
+        AI_NOTIFY_MIC_DATA_T *mic_data = (AI_NOTIFY_MIC_DATA_T *)(event->data);
+        if(NULL == mic_data) {
+            PR_ERR("mic data is null");
+            break;
+        }
+        extern void app_ui_helper_calculate_audio_power(uint8_t *audio_data, uint32_t data_len);
+        static uint32_t calculate_power_tick = 0;
+        calculate_power_tick++;
+        if (calculate_power_tick % 10 == 0) {
+            app_ui_helper_calculate_audio_power(mic_data->data, mic_data->data_len);
+        }
+        #endif
+    }
     break;
     default:
         break;

@@ -10,7 +10,7 @@
 #if defined(ENABLE_CHAT_DISPLAY2) && (ENABLE_CHAT_DISPLAY2 == 1)
 #include "lang_config.h"
 
-#include "ai_audio.h"
+#include "ai_chat_main.h"
 
 #include "tal_time_service.h"
 #include "tuya_iot.h"
@@ -47,13 +47,15 @@ static TIMER_ID s_date_timer_id   = NULL;
 
 uint8_t app_ui_get_volume_value(void)
 {
-    return ai_audio_get_volume();
+    int volume = 0;
+    ai_audio_player_get_vol(&volume);
+    return volume;
 }
 
 static void __app_ui_set_volume_value_tm_cb(TIMER_ID timer_id, void *arg)
 {
     uint8_t value = *(uint8_t *)arg;
-    ai_audio_set_volume(value);
+    ai_audio_player_set_vol(value);
 
     // Update DP
     extern OPERATE_RET ai_audio_volume_upload(void);
