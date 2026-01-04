@@ -280,7 +280,7 @@ OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, char *da
         ai_user_event_notify(AI_USER_EVT_TTS_START, NULL);
         break;
     case AI_AUDIO_PLAYER_TTS_DATA:
-        PR_DEBUG("audio player -> tts stream data %d", len);        
+        // PR_DEBUG("audio player -> tts stream data %d", len);        
         if (data && len > 0 && __s_tts_play_flag) {
             TUYA_CALL_ERR_LOG(tuya_ai_player_feed(__s_tone_player, (uint8_t *)data, len));
         }

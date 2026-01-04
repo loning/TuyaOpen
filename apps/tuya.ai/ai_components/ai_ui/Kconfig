@@ -1,0 +1,84 @@
+menuconfig ENABLE_COMP_AI_DISPLAY
+    select ENABLE_DISPLAY
+    bool "enable ai chat display ui"
+    default y
+
+if (ENABLE_COMP_AI_DISPLAY) 
+choice
+    prompt "choose display gui"
+    default ENABLE_AI_CHAT_GUI_WECHAT
+
+    config ENABLE_AI_CHAT_GUI_WECHAT
+        select ENABLE_LIBLVGL
+        bool "Use WeChat-like ui"
+
+    config ENABLE_AI_CHAT_GUI_CHATBOT
+        select ENABLE_LIBLVGL
+        bool "Use Chatbot ui"
+
+    config ENABLE_AI_CHAT_GUI_OLED
+        select ENABLE_LIBLVGL
+        bool "Use OLED ui"
+
+    config ENABLE_AI_CHAT_GUI_CUSTOM
+        bool "Use user custom"
+endchoice
+
+config ENABLE_CIRCLE_UI_STYLE
+    depends on ENABLE_AI_CHAT_GUI_CHATBOT
+    bool "Enable circle ui style"
+    default n
+
+if(!ENABLE_AI_CHAT_GUI_CUSTOM)
+choice 
+    prompt "choose text font size"
+    default FONT_TEXT_SIZE_18_2
+
+    config FONT_TEXT_SIZE_14_1
+        bool "Text font size 14"
+
+    config FONT_TEXT_SIZE_18_2
+        bool "Text font size 18"
+
+    config FONT_TEXT_SIZE_20_4
+        bool "Text font size 20"
+
+    config FONT_TEXT_SIZE_30_4
+        bool "Text font size 30"
+endchoice
+
+choice 
+    prompt "choose icon font size"
+    default FONT_ICON_SIZE_16_4 
+
+    config FONT_ICON_SIZE_14_1
+        bool "Icon font size 14"
+
+    config FONT_ICON_SIZE_16_4
+        bool "Icon font size 16"
+
+    config FONT_ICON_SIZE_20_4
+        bool "Icon font size 20"
+
+    config FONT_ICON_SIZE_30_4
+        bool "Icon font size 30"
+endchoice
+
+choice 
+    prompt "choose emo font type"
+    default FONT_EMOJI_SIZE_32 if(ENABLE_AI_CHAT_GUI_WECHAT)
+    default FONT_EMOJI_SIZE_64 if(ENABLE_AI_CHAT_GUI_CHATBOT)
+
+    config FONT_EMOJI_SIZE_32
+        bool "Emoji font size 32"
+
+    config FONT_EMOJI_SIZE_64
+        bool "Emoji font size 64"
+
+    config FONT_EMO_AWESOME
+        bool "Emoji font awesome"
+endchoice
+
+endif
+
+endif

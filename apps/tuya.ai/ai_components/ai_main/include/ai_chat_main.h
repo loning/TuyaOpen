@@ -14,7 +14,9 @@
 #define __TUYA_AI_CHAT_MODE_H__
 
 #include "tuya_cloud_types.h"
-#include "tal_mutex.h"
+#include "ai_user_event.h"
+#include "ai_manage_mode.h"
+#include "lang_config.h"
 
 #if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
 #include "tdl_button_manage.h"
@@ -24,13 +26,27 @@
 #include "ai_audio_player.h"
 #endif
 
-#include "ai_user_event.h"
-#include "ai_manage_mode.h"
-#include "ai_mode_hold.h"
-#include "ai_mode_oneshot.h"
-#include "ai_mode_wakeup.h"
-#include "ai_mode_free.h"
+#if defined(ENABLE_COMP_AI_DISPLAY) && (ENABLE_COMP_AI_DISPLAY == 1)
+#include "ai_ui_manage.h"
+#endif
 
+#if defined(ENABLE_COMP_AI_MODE_HOLD) && (ENABLE_COMP_AI_MODE_HOLD == 1)
+#include "ai_mode_hold.h"
+#endif
+#if defined(ENABLE_COMP_AI_MODE_ONESHOT) && (ENABLE_COMP_AI_MODE_ONESHOT == 1)
+#include "ai_mode_oneshot.h"
+#endif
+#if defined(ENABLE_COMP_AI_MODE_WAKEUP) && (ENABLE_COMP_AI_MODE_WAKEUP == 1)
+#include "ai_mode_wakeup.h"
+#endif
+#if defined(ENABLE_COMP_AI_MODE_FREE) && (ENABLE_COMP_AI_MODE_FREE == 1)
+#include "ai_mode_free.h"
+#endif
+
+#if defined(ENABLE_COMP_AI_MCP) && (ENABLE_COMP_AI_MCP == 1)
+#include "ai_mcp_server.h"
+#include "ai_mcp.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +61,8 @@ extern "C" {
 ***********************typedef define***********************
 ***********************************************************/
 typedef struct {
+    AI_CHAT_MODE_E        default_mode;
+    int                   default_vol;
     AI_USER_EVENT_NOTIFY  evt_cb;
 }AI_CHAT_MODE_CFG_T;
 

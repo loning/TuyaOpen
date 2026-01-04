@@ -329,3 +329,21 @@ char *ai_get_mode_state_str(AI_MODE_STATE_E state)
 
     return _state_str[state];
 }
+
+/**
+@brief Get mode name string
+@param mode Mode 
+@return char* name string
+*/
+char *ai_get_mode_name_str(AI_CHAT_MODE_E mode)
+{
+    AI_MODE_CTRL_T *mode_ctrl = NULL;
+
+    mode_ctrl = __find_chat_mode_ctrl(mode);
+    if(!mode_ctrl) {
+        PR_ERR("chat mode %d not registered", mode);
+        return NULL;
+    }
+
+    return (char *)mode_ctrl->handle.name;
+}

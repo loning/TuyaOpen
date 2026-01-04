@@ -7,7 +7,7 @@
 
 #include "tuya_cloud_types.h"
 
-#if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
+#if defined(ENABLE_COMP_AI_MODE_HOLD) && (ENABLE_COMP_AI_MODE_HOLD == 1)
 
 #include "tal_api.h"
 #include "tuya_ai_agent.h"
@@ -16,6 +16,7 @@
 #include "tdl_led_manage.h"
 #endif
 
+#include "lang_config.h"
 #include "ai_user_event.h"
 
 #include "ai_audio_input.h"
@@ -295,19 +296,20 @@ static OPERATE_RET __ai_mode_hold_handle_key(TDL_BUTTON_TOUCH_EVENT_E event, voi
 OPERATE_RET ai_mode_hold_register(void)
 {
     OPERATE_RET rt = OPRT_OK;
+    AI_MODE_HANDLE_T handle;
 
-    AI_MODE_HANDLE_T handle = {
-        .init         = __ai_mode_hold_init,
-        .deinit       = __ai_mode_hold_deinit,
-        .task         = __ai_mode_hold_task,
-        .handle_event = __ai_mode_hold_handle_event,
-        .get_state    = __ai_mode_hold_get_state,
+    memset(&handle, 0, sizeof(AI_MODE_HANDLE_T));
+
+    handle.name         = HOLD_TALK;
+    handle.init         = __ai_mode_hold_init;
+    handle.deinit       = __ai_mode_hold_deinit;
+    handle.task         = __ai_mode_hold_task;
+    handle.handle_event = __ai_mode_hold_handle_event;
+    handle.get_state    = __ai_mode_hold_get_state;  
 
 #if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
-        .handle_key   = __ai_mode_hold_handle_key,
-#endif
-
-    };     
+    handle.handle_key   = __ai_mode_hold_handle_key;
+#endif   
 
     TUYA_CALL_ERR_RETURN(ai_mode_register(AI_CHAT_MODE_HOLD, &handle));
 

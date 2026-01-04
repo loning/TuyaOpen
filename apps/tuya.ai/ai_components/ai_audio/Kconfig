@@ -1,4 +1,4 @@
-config ENABLE_COMP_AI_AUDIO
+menuconfig ENABLE_COMP_AI_AUDIO
     select ENABLE_AUDIO_CODECS
     bool "enable ai audio input/output"
     default y

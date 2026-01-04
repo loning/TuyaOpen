@@ -52,6 +52,8 @@ typedef enum {
 } AI_MODE_STATE_E;
 
 typedef struct {
+    const char *name;
+
     OPERATE_RET     (*init)         (void);
     OPERATE_RET     (*deinit)       (void);
     OPERATE_RET     (*task)         (void *args);
@@ -144,6 +146,13 @@ AI_CHAT_MODE_E ai_mode_switch_next(void);
 @return char* State string
 */
 char *ai_get_mode_state_str(AI_MODE_STATE_E state);
+
+/**
+@brief Get mode name string
+@param mode Mode 
+@return char* name string
+*/
+char *ai_get_mode_name_str(AI_CHAT_MODE_E mode);
 
 #ifdef __cplusplus
 }

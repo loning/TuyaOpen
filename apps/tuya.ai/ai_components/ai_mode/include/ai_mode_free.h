@@ -37,6 +37,7 @@ extern "C" {
 */
 OPERATE_RET ai_mode_free_register(void);
 
+
 #ifdef __cplusplus
 }
 #endif

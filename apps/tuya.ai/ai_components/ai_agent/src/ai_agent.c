@@ -173,8 +173,18 @@ OPERATE_RET __ai_agent_nlg_process(cJSON *root, bool eof)
     static AI_USER_EVT_TYPE_E event_type = AI_USER_EVT_TEXT_STREAM_STOP;
     // TAL_PR_DEBUG("event type %d", event_type);
     if (event_type == AI_USER_EVT_TEXT_STREAM_STOP) {
-        ai_user_event_notify(AI_USER_EVT_TEXT_STREAM_START, &text);
-        event_type = AI_USER_EVT_TEXT_STREAM_DATA;
+        if(eof) {
+            if(strlen(content) > 0) {
+                ai_user_event_notify(AI_USER_EVT_TEXT_STREAM_START, &text);
+                text.data = NULL;
+                text.datalen = 0;
+                ai_user_event_notify(AI_USER_EVT_TEXT_STREAM_STOP, &text);
+                event_type = AI_USER_EVT_TEXT_STREAM_STOP;
+            }
+        }else {
+            ai_user_event_notify(AI_USER_EVT_TEXT_STREAM_START, &text); 
+            event_type = AI_USER_EVT_TEXT_STREAM_DATA;
+        }
     } else {
         if (event_type == AI_USER_EVT_TEXT_STREAM_DATA) {
             ai_user_event_notify(eof?AI_USER_EVT_TEXT_STREAM_STOP:AI_USER_EVT_TEXT_STREAM_DATA, &text);
@@ -207,11 +217,10 @@ OPERATE_RET __ai_agent_text_cb(AI_TEXT_TYPE_E type, cJSON *root, bool eof)
         ai_agent_skills_process(root, eof);
     break;
     default:
-        PR_NOTICE("ai agent -> unknown text type: %d", type);
-        PR_NOTICE(" ai agent -> recv text type %d", type);
-        char *content = cJSON_PrintUnformatted(root);
-        PR_NOTICE("text content: %s", content);
-        cJSON_free(content);
+        // PR_NOTICE("ai agent -> unknown text type: %d", type);
+        // char *content = cJSON_PrintUnformatted(root);
+        // PR_NOTICE("text content: %s", content);
+        // cJSON_free(content);
     break;     
     }
 

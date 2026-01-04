@@ -9,10 +9,9 @@
  *
  */
 
-#include "tuya_cloud_types.h"
+#include "tal_api.h"
 #include "tkl_asr.h"
 
-#include "tal_api.h"
 #include "cJSON.h"
 #include "tuya_ai_agent.h"
 
@@ -25,32 +24,37 @@
 #include "ai_audio_player.h"
 #endif
 
-#include "ai_agent.h"
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
+#include "ai_video_input.h"
+#endif
 
+#include "ai_agent.h"
 #include "ai_manage_mode.h"
 #include "ai_chat_main.h"
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
+#if defined(BUTTON_NAME)
+#define AI_CHAT_BUTTON_NAME    BUTTON_NAME
+#else
 #define AI_CHAT_BUTTON_NAME    "ai_chat_button"
+#endif
+
 #define TUYA_AI_CHAT_PAR       "ty_ai_chat_par"
 
-#define TUYA_SPK_DEFAULT_VOL        70
-#define TUYA_MODE_DEFAULT           AI_CHAT_MODE_HOLD
-
-
 #define AI_AUDIO_SLICE_TIME         80     
-#define AI_AUDIO_VAD_ACTIVE_TIME    500  
+#define AI_AUDIO_VAD_ACTIVE_TIME    400  
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
-
 
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
 static AI_USER_EVENT_NOTIFY   sg_evt_notify_cb = NULL;
 static THREAD_HANDLE          sg_ai_chat_mode_task = NULL;
+static AI_CHAT_MODE_E         sg_ai_default_mode = AI_CHAT_MODE_HOLD;
+static int                    sg_ai_default_vol = 70;
 
 #if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
 static TDL_BUTTON_HANDLE sg_button_hdl = NULL;
@@ -59,6 +63,11 @@ static TDL_BUTTON_HANDLE sg_button_hdl = NULL;
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
+#if defined(ENABLE_COMP_AI_DISPLAY) && (ENABLE_COMP_AI_DISPLAY == 1)
+extern OPERATE_RET ai_chat_ui_init(void);
+extern void ai_chat_ui_handle_event(AI_NOTIFY_EVENT_T *event);
+#endif
+
 /**
 @brief Save chat mode and volume configuration
 @param mode Chat mode value
@@ -89,7 +98,7 @@ static OPERATE_RET __ai_chat_load_config(uint32_t *mode, int *volume)
     OPERATE_RET rt = OPRT_OK;
     uint8_t *value = NULL;
     uint32_t len = 0, read_mode = 0;
-    int read_vol = TUYA_SPK_DEFAULT_VOL;
+    int read_vol = sg_ai_default_vol;
 
     if(NULL == mode || NULL == volume) {
         return OPRT_INVALID_PARM;
@@ -138,8 +147,8 @@ static void __ai_handle_event(AI_NOTIFY_EVENT_T *event)
 
     ai_mode_handle_event(event);
 
-#if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
     switch(event->type) {
+#if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
         case AI_USER_EVT_PLAY_CTL_PLAY:
         case AI_USER_EVT_PLAY_CTL_RESUME:{
             ai_audio_player_set_resume(true);
@@ -158,10 +167,13 @@ static void __ai_handle_event(AI_NOTIFY_EVENT_T *event)
             ai_audio_player_alert((AI_AUDIO_ALERT_TYPE_E)event->data);
         }
         break;
-        default:
-            break;
-    }
 #endif
+        default:
+#if defined(ENABLE_COMP_AI_DISPLAY) && (ENABLE_COMP_AI_DISPLAY == 1)
+            ai_chat_ui_handle_event(event);
+#endif
+        break;
+    }
 
     if (sg_evt_notify_cb) {
         sg_evt_notify_cb(event);
@@ -224,7 +236,7 @@ static void __ai_button_function_cb(char *name, TDL_BUTTON_TOUCH_EVENT_E event, 
         uint32_t nxt_mode = ai_mode_switch_next();
 
         /* Save trigger mode */
-        int volume = TUYA_SPK_DEFAULT_VOL;
+        int volume = sg_ai_default_vol;
 
         #if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
         ai_audio_player_get_vol(&volume);
@@ -277,8 +289,8 @@ static OPERATE_RET __ai_chat_mode_open_button(void)
 int __ai_mqtt_connected_evt(void *data)
 {
     OPERATE_RET rt = OPRT_OK;
-    uint32_t mode = TUYA_MODE_DEFAULT;
-    int vol = TUYA_SPK_DEFAULT_VOL;
+    uint32_t mode = sg_ai_default_mode;
+    int vol = sg_ai_default_vol;
 
     TUYA_CALL_ERR_RETURN(ai_agent_init());
 
@@ -289,6 +301,39 @@ int __ai_mqtt_connected_evt(void *data)
     return rt;
 }
 
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
+static void __ai_video_display_flush(TDL_CAMERA_FRAME_T *frame)
+{
+    #if defined(ENABLE_COMP_AI_DISPLAY) && (ENABLE_COMP_AI_DISPLAY == 1)
+    ai_ui_camera_flush(frame->data, frame->width, frame->height);
+    #endif
+}
+#endif
+
+static OPERATE_RET __ai_chat_mode_register(void)
+{
+    OPERATE_RET rt = OPRT_OK;
+
+#if defined(ENABLE_COMP_AI_MODE_HOLD) && (ENABLE_COMP_AI_MODE_HOLD == 1)
+    TUYA_CALL_ERR_RETURN(ai_mode_hold_register());
+#endif
+
+#if defined(ENABLE_COMP_AI_MODE_ONESHOT) && (ENABLE_COMP_AI_MODE_ONESHOT == 1)
+    TUYA_CALL_ERR_RETURN(ai_mode_oneshot_register());
+#endif
+
+#if defined(ENABLE_COMP_AI_MODE_WAKEUP) && (ENABLE_COMP_AI_MODE_WAKEUP == 1)
+    TUYA_CALL_ERR_RETURN(ai_mode_wakeup_register());
+#endif
+
+#if defined(ENABLE_COMP_AI_MODE_FREE) && (ENABLE_COMP_AI_MODE_FREE == 1)
+    TUYA_CALL_ERR_RETURN(ai_mode_free_register());
+#endif
+
+    return rt;
+}
+
+
 /**
 @brief Initialize AI chat module
 @param cfg Chat mode configuration
@@ -297,17 +342,28 @@ int __ai_mqtt_connected_evt(void *data)
 OPERATE_RET ai_chat_init(AI_CHAT_MODE_CFG_T *cfg)
 {
     OPERATE_RET rt = OPRT_OK;
-    uint32_t mode = TUYA_MODE_DEFAULT;
-    int vol = TUYA_SPK_DEFAULT_VOL;
+    uint32_t mode = sg_ai_default_mode;
+    int vol = sg_ai_default_vol;
 
     if(NULL == cfg) {
         return OPRT_INVALID_PARM;
     }
 
+    TUYA_CALL_ERR_RETURN(__ai_chat_mode_register());
+
+    sg_ai_default_mode = cfg->default_mode;
+    sg_ai_default_vol  = cfg->default_vol;
+    mode = sg_ai_default_mode;
+    vol  = sg_ai_default_vol;
+
+#if defined(ENABLE_COMP_AI_DISPLAY) && (ENABLE_COMP_AI_DISPLAY == 1)
+    TUYA_CALL_ERR_RETURN(ai_chat_ui_init());
+#endif
+
     rt = __ai_chat_load_config(&mode, &vol);
     if (OPRT_OK != rt) {
-        mode = TUYA_MODE_DEFAULT;
-        vol = TUYA_SPK_DEFAULT_VOL;
+        mode = sg_ai_default_mode;
+        vol = sg_ai_default_vol;
         __ai_chat_save_config(mode, vol);
         PR_NOTICE("load chat mode config failed, use default mode %d, volume %d", mode, vol);
     }
@@ -351,6 +407,18 @@ OPERATE_RET ai_chat_init(AI_CHAT_MODE_CFG_T *cfg)
     TUYA_CALL_ERR_LOG(__ai_chat_mode_open_button());
 #endif
 
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
+    AI_VEDIO_CFG_T ai_video_cfg = {
+        .disp_flush_cb = __ai_video_display_flush,
+    };
+
+    TUYA_CALL_ERR_LOG(ai_video_init(&ai_video_cfg));
+#endif
+
+#if defined(ENABLE_COMP_AI_MCP) && (ENABLE_COMP_AI_MCP == 1)
+    TUYA_CALL_ERR_RETURN(ai_mcp_init());
+#endif
+
     PR_DEBUG("ai chat mode init mode %d success", mode);
 
     return rt;
@@ -366,7 +434,7 @@ OPERATE_RET ai_chat_set_volume(int volume)
     OPERATE_RET rt = OPRT_OK;
 
 #if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
-    AI_CHAT_MODE_E mode = TUYA_MODE_DEFAULT;
+    AI_CHAT_MODE_E mode = sg_ai_default_mode;
     TUYA_CALL_ERR_RETURN(ai_audio_player_set_vol(volume));
 
     /* Save volume */
@@ -384,7 +452,7 @@ OPERATE_RET ai_chat_set_volume(int volume)
 */
 int ai_chat_get_volume(void)
 {
-    int volume = TUYA_SPK_DEFAULT_VOL;
+    int volume = sg_ai_default_vol;
 
 #if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
     OPERATE_RET rt = OPRT_OK;

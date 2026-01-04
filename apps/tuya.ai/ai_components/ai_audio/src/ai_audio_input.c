@@ -256,9 +256,9 @@ OPERATE_RET ai_audio_input_start(void)
     if (!sg_recorder->vad_task) {
         THREAD_CFG_T thrd_cfg = {
             .priority = THREAD_PRIO_5,
-#if defined(ENABLE_APP_OPUS_ENCODER) && (ENABLE_APP_OPUS_ENCODER == 1)
+#if defined(ENABLE_COMP_AI_AUDIO_CODEC_OPUS) && (ENABLE_COMP_AI_AUDIO_CODEC_OPUS == 1)
             .stackDepth = 26 * 1024,
-#elif defined(ENABLE_APP_SPEEX_ENCODER) && (ENABLE_APP_SPEEX_ENCODER == 1)
+#elif defined(ENABLE_COMP_AI_AUDIO_CODEC_SPEEX) && (ENABLE_COMP_AI_AUDIO_CODEC_SPEEX == 1)
             .stackDepth = 25 * 1024,
 #else
             .stackDepth = 2 * 1024 + 512,  /* Support opus encode */

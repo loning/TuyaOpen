@@ -1,4 +1,4 @@
-config ENABLE_COMP_AI_VIDEO
+menuconfig ENABLE_COMP_AI_VIDEO
     select ENABLE_CAMERA
     bool "enable ai camera"
     default n
