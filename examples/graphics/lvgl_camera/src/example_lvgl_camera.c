@@ -38,6 +38,7 @@ static THREAD_HANDLE sg_lvgl_thrd = NULL;
 static TDL_CAMERA_HANDLE_T sg_camera_hdl = NULL;
 static TDL_DISP_HANDLE_T sg_tdl_disp_hdl = NULL;
 static TDL_DISP_DEV_INFO_T sg_display_info;
+static TDL_FB_MANAGE_HANDLE_T sg_fb_manage = NULL;
 static uint8_t sg_display_fb_num = DISPLAY_FRAME_BUFF_NUM;
 static TDL_BUTTON_HANDLE sg_button_hdl = NULL;
 /***********************************************************
@@ -57,7 +58,7 @@ static OPERATE_RET __get_camera_raw_frame_cb(TDL_CAMERA_HANDLE_T hdl, TDL_CAMERA
         return OPRT_OK;
     }
 
-    convert_fb = tdl_disp_get_free_fb();
+    convert_fb = tdl_disp_get_free_fb(sg_fb_manage);
     TUYA_CHECK_NULL_RETURN(convert_fb, OPRT_COM_ERROR);
 
     TUYA_CALL_ERR_LOG(tdl_disp_convert_yuv422_to_framebuffer(frame->data,\
@@ -66,7 +67,7 @@ static OPERATE_RET __get_camera_raw_frame_cb(TDL_CAMERA_HANDLE_T hdl, TDL_CAMERA
                                                              convert_fb));
 
     if (sg_display_info.rotation != TUYA_DISPLAY_ROTATION_0) {
-        rotat_fb = tdl_disp_get_free_fb();
+        rotat_fb = tdl_disp_get_free_fb(sg_fb_manage);
         TUYA_CHECK_NULL_RETURN(rotat_fb, OPRT_COM_ERROR);
         
         tdl_disp_draw_rotate(sg_display_info.rotation, convert_fb, rotat_fb, sg_display_info.is_swap);
@@ -103,8 +104,7 @@ static OPERATE_RET __example_camera_display_init(void)
 
     TUYA_CALL_ERR_RETURN(tdl_disp_dev_get_info(sg_tdl_disp_hdl, &sg_display_info));
 
-    width = sg_display_info.width;
-    height = sg_display_info.height;
+    TUYA_CALL_ERR_RETURN(tdl_disp_fb_manage_init(&sg_fb_manage));
 
     /*create frame buffer*/
     if (sg_display_info.rotation != TUYA_DISPLAY_ROTATION_0) {
@@ -114,7 +114,7 @@ static OPERATE_RET __example_camera_display_init(void)
     }
 
     for(uint8_t i=0; i<sg_display_fb_num; i++) {
-        TUYA_CALL_ERR_LOG(tdl_disp_fb_manage_add(sg_display_info.fmt, height, width));
+        TUYA_CALL_ERR_LOG(tdl_disp_fb_manage_add(sg_fb_manage,sg_display_info.fmt, height, width));
     }
 
     return OPRT_OK;
@@ -313,7 +313,13 @@ static void tuya_app_thread(void *arg)
 
 void tuya_app_main(void)
 {
-    THREAD_CFG_T thrd_param = {4096, 4, "tuya_app_main"};
+    THREAD_CFG_T thrd_param;
+    
+    memset(&thrd_param, 0, sizeof(THREAD_CFG_T));
+    thrd_param.stackDepth = 1024 * 4;
+    thrd_param.priority = THREAD_PRIO_1;
+    thrd_param.thrdname = "tuya_app_main";
+
     tal_thread_create_and_start(&ty_app_thread, NULL, NULL, tuya_app_thread, NULL, &thrd_param);
 }
 #endif
