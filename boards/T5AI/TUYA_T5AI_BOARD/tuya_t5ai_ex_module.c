@@ -117,35 +117,6 @@ static OPERATE_RET __board_register_display(void)
 
     return rt;
 }
-#elif defined (TUYA_T5AI_BOARD_EX_MODULE_29E_INK) && (TUYA_T5AI_BOARD_EX_MODULE_29E_INK ==1)
-static OPERATE_RET __board_register_display(void)   
-{
-    OPERATE_RET rt = OPRT_OK;
-
-#if defined(DISPLAY_NAME)
-    DISP_SPI_DEVICE_CFG_T display_cfg;
-
-    memset(&display_cfg, 0, sizeof(DISP_SPI_DEVICE_CFG_T));
-
-    display_cfg.bl.type   = BOARD_LCD_BL_TYPE;
-
-    display_cfg.width     = BOARD_LCD_WIDTH;
-    display_cfg.height    = BOARD_LCD_HEIGHT;
-    display_cfg.rotation  = BOARD_LCD_ROTATION;
-
-    display_cfg.port      = BOARD_LCD_SPI_PORT;
-    display_cfg.spi_clk   = BOARD_LCD_SPI_CLK;
-    display_cfg.cs_pin    = BOARD_LCD_SPI_CS_PIN;
-    display_cfg.dc_pin    = BOARD_LCD_SPI_DC_PIN;
-    display_cfg.rst_pin   = BOARD_LCD_SPI_RST_PIN;
-
-    display_cfg.power.pin = BOARD_LCD_POWER_PIN;
-
-    TUYA_CALL_ERR_RETURN(tdd_disp_spi_mono_st7305_register(DISPLAY_NAME, &display_cfg, BOARD_LCD_CASET_XS));
-#endif
-
-    return rt;
-}
 #elif defined (TUYA_T5AI_BOARD_EX_MODULE_096_OLED) && (TUYA_T5AI_BOARD_EX_MODULE_096_OLED ==1)
 static OPERATE_RET __board_register_display(void)   
 {
