@@ -350,7 +350,7 @@ void user_main(void)
 
     ret = app_chat_bot_init();
     if (ret != OPRT_OK) {
-        PR_ERR("tuya_audio_recorde_init failed");
+        PR_ERR("app_chat_bot_init failed");
     }
 
 #if defined(ENABLE_BATTERY) && (ENABLE_BATTERY == 1)

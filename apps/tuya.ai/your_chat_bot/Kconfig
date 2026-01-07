@@ -4,10 +4,10 @@ config TUYA_PRODUCT_ID
     string "product ID of project"
     default "p320pepzvmm1ghse"
 
-rsource "../ai_components/Kconfig"
-
 config ENABLE_BATTERY
     bool "enable the battery module"
     default n
+
+rsource "../ai_components/Kconfig"
 
 endmenu
