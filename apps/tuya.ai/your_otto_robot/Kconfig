@@ -6,7 +6,7 @@ config TUYA_PRODUCT_ID
 
 choice
     prompt "choose Otto type"
-    default OTTO_TYPE_OTTO
+    default OTTO_TYPE_NINJA_OTTO
 
     config OTTO_TYPE_NINJA_OTTO
     bool "ninja_otto"
@@ -14,6 +14,19 @@ choice
     config OTTO_TYPE_OTTO
     bool "otto"
 endchoice
+
+if(OTTO_TYPE_OTTO) 
+    choice
+        prompt "choose Otto board type"
+        default OTTO_BOARD_DEFAULT_TXP
+
+        config OTTO_BOARD_DEFAULT_TXP
+        bool "board default txp Otto robot servo pin define"
+
+        config OTTO_BOARD_DREAM
+        bool "board dream Otto robot servo pin define"
+    endchoice
+endif
 
 config ENABLE_APP_CUSTOM_EYES_UI
     bool "enable custom eyes ui for otto robot"
