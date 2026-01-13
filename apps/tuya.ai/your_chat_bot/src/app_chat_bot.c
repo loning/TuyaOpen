@@ -106,7 +106,7 @@ OPERATE_RET app_chat_bot_init(void)
     OPERATE_RET rt = OPRT_OK;
 
     AI_CHAT_MODE_CFG_T ai_chat_cfg = {
-        .default_mode = AI_CHAT_MODE_FREE,
+        .default_mode = AI_CHAT_MODE_WAKEUP,
         .default_vol = 70,
         .evt_cb = __ai_chat_handle_event,
     };
