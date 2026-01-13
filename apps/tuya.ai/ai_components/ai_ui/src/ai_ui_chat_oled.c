@@ -164,6 +164,16 @@ static void __ui_init_128X64(void)
 static void __ui_init_128X32(void)
 {
     lv_obj_t *screen = lv_screen_active();
+    if(NULL == screen) {
+        PR_ERR("screen is null");
+        return;
+    }
+
+    if(NULL == sg_font.text) {
+        PR_ERR("sg_font.text is null");
+        return;
+    }
+
     lv_obj_set_style_text_font(screen, sg_font.text, 0);
 
     // Container

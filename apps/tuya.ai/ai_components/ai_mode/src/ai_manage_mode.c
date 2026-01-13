@@ -99,7 +99,7 @@ OPERATE_RET ai_mode_init(AI_CHAT_MODE_E mode)
     mode_ctrl = __find_chat_mode_ctrl(mode);
     if(!mode_ctrl) {
         PR_ERR("chat mode %d not registered", mode);
-        return OPRT_COM_ERROR;
+        return OPRT_NOT_FOUND;
     }
 
     TUYA_CALL_ERR_RETURN(tal_mutex_create_init(&mode_ctrl->mutex));

@@ -7,8 +7,6 @@
 #include "tal_api.h"
 #include "tuya_ringbuf.h"
 
-#include "tdl_display_manage.h"
-
 #include "ai_ui_icon_font.h"
 #include "ai_ui_stream_text.h"
 #include "ai_ui_manage.h"

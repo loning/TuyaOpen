@@ -1,5 +1,4 @@
 menuconfig ENABLE_COMP_AI_DISPLAY
-    select ENABLE_DISPLAY
     bool "enable ai chat display ui"
     default y
 

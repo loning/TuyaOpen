@@ -80,7 +80,7 @@ static OPERATE_RET __ai_chat_save_config(uint32_t mode, int volume)
     char buf[64] = {0};
 
     memset(buf, 0, sizeof(buf));
-    snprintf(buf, sizeof(buf), "{\"volume\": %d, \"chat_mode\":%d}", volume, mode);
+    snprintf(buf, sizeof(buf), "{\"volume\": %d, \"chat_mode\":%d}", volume, (int)mode);
     TUYA_CALL_ERR_RETURN(tal_kv_set(TUYA_AI_CHAT_PAR, (const uint8_t *)buf, strlen(buf)));
 
     PR_DEBUG("save chat mode config: %s", buf);
@@ -206,8 +206,15 @@ static int __ai_audio_output(uint8_t *data, uint16_t datalen)
     uint64_t   pts = 0;
     uint64_t   timestamp = 0;
 
+#if defined(ENABLE_AUDIO_AEC) && (ENABLE_AUDIO_AEC == 1)
     timestamp = pts = tal_system_get_millisecond();
-    TUYA_CALL_ERR_LOG(tuya_ai_audio_input_direct(timestamp, pts, data, datalen, datalen));
+    TUYA_CALL_ERR_LOG(tuya_ai_audio_input(timestamp, pts, data, datalen, datalen));
+#else 
+    if(false == ai_audio_player_is_playing()) {
+        timestamp = pts = tal_system_get_millisecond();
+        TUYA_CALL_ERR_LOG(tuya_ai_audio_input(timestamp, pts, data, datalen, datalen));
+    }
+#endif
 
     return rt;
 }
@@ -391,7 +398,7 @@ OPERATE_RET ai_chat_init(AI_CHAT_MODE_CFG_T *cfg)
 
     ai_user_event_notify_register(__ai_handle_event);
 
-    TUYA_CALL_ERR_RETURN(tal_event_subscribe(EVENT_MQTT_CONNECTED, "ai_agent_init", __ai_mqtt_connected_evt, SUBSCRIBE_TYPE_NORMAL));
+    TUYA_CALL_ERR_RETURN(tal_event_subscribe(EVENT_MQTT_CONNECTED, "ai_agent_init", __ai_mqtt_connected_evt, SUBSCRIBE_TYPE_EMERGENCY));
     TUYA_CALL_ERR_RETURN(tal_event_subscribe(EVENT_AI_CLIENT_RUN, "client_run", ai_mode_client_run, SUBSCRIBE_TYPE_NORMAL));
 
 #if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)

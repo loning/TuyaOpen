@@ -410,12 +410,6 @@ OPERATE_RET ai_agent_role_switch(char *role)
     char post_content[128] = {0};
     snprintf(post_content, sizeof(post_content), "{\"commandInfo\": \"%s\"}", role);
 	
-
-    OPERATE_RET iot_httpc_common_post(IN CONST CHAR_T *api_name, IN CONST CHAR_T *api_ver,
-        IN CONST CHAR_T *uuid, IN CONST CHAR_T *devid,
-        IN CHAR_T *post_data,
-        IN CONST CHAR_T *p_head_other,
-        OUT ty_cJSON **pp_result);
     TUYA_CALL_ERR_LOG(atop_service_comm_post_simple("thing.ai.agent.switch.role", "1.0",  post_content, NULL, &result));
     TUYA_CHECK_NULL_RETURN(result, OPRT_MID_HTTP_GET_RESP_ERROR);
 

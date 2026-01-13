@@ -210,15 +210,6 @@ OPERATE_RET ai_skill_parse_music(cJSON *json, AI_AUDIO_MUSIC_T **music)
         }
     }
 
-    // dump music
-    for (i = 0; i < music_ptr->src_cnt; i++) {
-        music_src = &music_ptr->src_array[i];
-        PR_DEBUG("music[%d]: %s, %s, %s, %s, %s, %s, %d", i, music_src->artist, music_src->song_name,\
-                                                             music_src->url, music_src->audio_id, \
-                                                             music_src->img_url, music_src->format,\
-                                                             music_src->duration);
-    }
-
     *music = music_ptr;
 
     return OPRT_OK;

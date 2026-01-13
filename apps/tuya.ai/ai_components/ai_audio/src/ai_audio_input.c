@@ -69,11 +69,12 @@ static OPERATE_RET __audio_slice_check_and_send(bool *more_data)
         uint32_t len = tuya_ring_buff_used_size_get(sg_recorder->ringbuf);
         /* If cache is larger than slice size, read all and send */
         if (len >= sg_recorder->slice_size) {
-            uint8_t *cache_data = (uint8_t*)tal_psram_malloc(sg_recorder->slice_size);
+            
+            uint8_t *cache_data = (uint8_t*)Malloc(sg_recorder->slice_size);
             uint32_t read_len = tuya_ring_buff_read(sg_recorder->ringbuf, cache_data, sg_recorder->slice_size);
         
             sg_recorder->output_cb(cache_data, read_len);
-            tal_free(cache_data);
+            Free(cache_data);
             *more_data = TRUE;
         }
         tal_mutex_unlock(sg_recorder->mutex);
@@ -152,7 +153,7 @@ static void __record_task(void *arg)
 
     NewStopWatch(sw);
 
-    while(tal_thread_get_state(sg_recorder->vad_task) == THREAD_STATE_RUNNING) {
+    while(sg_recorder->vad_task && tal_thread_get_state(sg_recorder->vad_task) == THREAD_STATE_RUNNING) {
         /* Microphone disabled or not wake-up, don't need to send VAD stat change */
         if (!sg_recorder->enable || !sg_recorder->wakeup_flag) {
            goto nextloop;
@@ -181,6 +182,8 @@ nextloop:
         }
         sw.restart(&sw);
     }
+
+    PR_NOTICE("audio record task exit");
 }
 
 /**
@@ -256,15 +259,9 @@ OPERATE_RET ai_audio_input_start(void)
     if (!sg_recorder->vad_task) {
         THREAD_CFG_T thrd_cfg = {
             .priority = THREAD_PRIO_5,
-#if defined(ENABLE_COMP_AI_AUDIO_CODEC_OPUS) && (ENABLE_COMP_AI_AUDIO_CODEC_OPUS == 1)
-            .stackDepth = 26 * 1024,
-#elif defined(ENABLE_COMP_AI_AUDIO_CODEC_SPEEX) && (ENABLE_COMP_AI_AUDIO_CODEC_SPEEX == 1)
-            .stackDepth = 25 * 1024,
-#else
             .stackDepth = 2 * 1024 + 512,  /* Support opus encode */
-#endif
             .thrdname = "record_task",
-            #ifdef ENABLE_EXT_RAM
+            #if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM == 1)
             .psram_mode = 1,
             #endif            
         };

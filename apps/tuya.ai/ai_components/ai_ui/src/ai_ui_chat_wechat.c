@@ -7,7 +7,9 @@
 #include "tal_api.h"
 
 #if defined(ENABLE_AI_CHAT_GUI_WECHAT) && (ENABLE_AI_CHAT_GUI_WECHAT == 1)
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
 #include "tdl_display_manage.h"
+#endif
 
 #include "lvgl.h"
 #include "lv_vendor.h"
