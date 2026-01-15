@@ -12,8 +12,7 @@
 #include "tal_api.h"
 #include "tuya_ringbuf.h"
 
-#include "ai_audio.h"
-
+#include "ai_agent.h"
 #include "app_display.h"
 #include "rfid_scan.h"
 #include "ai_log.h"
@@ -104,11 +103,11 @@ static void __ai_log_uart_data_callback(UART_MODE_E mode, const uint8_t *data, s
     }
 
     // Send data to display manager
-    app_display_send_msg(POCKET_DISP_TP_AI_LOG, (uint8_t *)data, len);
+    ai_ui_disp_msg(POCKET_DISP_TP_AI_LOG, (uint8_t *)data, len);
 
     // Upload to AI text agent if not streaming
     if (app_get_text_stream_status() == FALSE) {
-        ai_text_agent_upload((uint8_t *)data, len);
+        ai_agent_send_text((char *)data);
     }
 }
 
@@ -384,7 +383,7 @@ uint32_t uart_print_write(const uint8_t *data, size_t len)
 static void __rfid_scan_data_callback(uint8_t dev_id, RFID_TAG_TYPE_E tag_type, const uint8_t *uid, uint8_t uid_len)
 {
     rfid_scan_screen_data_update(dev_id, tag_type, uid, uid_len);
-    app_display_send_msg(POCKET_DISP_TP_RFID_SCAN_SUCCESS, NULL, 0);
+    ai_ui_disp_msg(POCKET_DISP_TP_RFID_SCAN_SUCCESS, NULL, 0);
 }
 
 void __printer_scan_thread(void *param)

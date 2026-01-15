@@ -99,6 +99,15 @@ static void __display_status_tm_cb(TIMER_ID timer_id, void *arg)
 
 #endif
 
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
+static void __ai_video_display_flush(TDL_CAMERA_FRAME_T *frame)
+{
+    #if defined(ENABLE_COMP_AI_DISPLAY) && (ENABLE_COMP_AI_DISPLAY == 1)
+    ai_ui_camera_flush(frame->data, frame->width, frame->height);
+    #endif
+}
+#endif
+
 static void __ai_chat_handle_event(AI_NOTIFY_EVENT_T *event)
 {
     (void)event;
@@ -119,6 +128,18 @@ OPERATE_RET app_chat_bot_init(void)
         .evt_cb = __ai_chat_handle_event,
     };
     TUYA_CALL_ERR_RETURN(ai_chat_init(&ai_chat_cfg));
+
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
+    AI_VEDIO_CFG_T ai_video_cfg = {
+        .disp_flush_cb = __ai_video_display_flush,
+    };
+
+    TUYA_CALL_ERR_LOG(ai_video_init(&ai_video_cfg));
+#endif
+
+#if defined(ENABLE_COMP_AI_MCP) && (ENABLE_COMP_AI_MCP == 1)
+    TUYA_CALL_ERR_RETURN(ai_mcp_init());
+#endif
 
     // Free heap size
     tal_sw_timer_create(__printf_free_heap_tm_cb, NULL, &sg_printf_heap_tm);
