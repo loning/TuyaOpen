@@ -1289,13 +1289,14 @@ char *dp_obj_dump_all_json(char *devid, int flags)
     }
 
     char *out_str = tal_malloc(strlen(tmp) + 1);
-    cJSON_free(tmp);
     if (NULL == out_str) {
         PR_ERR("malloc err");
+        cJSON_free(tmp);
         return NULL;
     }else {
         memset(out_str, 0, strlen(tmp) + 1);
         strcpy(out_str, tmp);
+        cJSON_free(tmp);
     }
 
     char *out = out_str;
