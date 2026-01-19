@@ -95,7 +95,8 @@ static OPERATE_RET __ai_chat_load_config(uint32_t *mode, int *volume)
 {
     OPERATE_RET rt = OPRT_OK;
     uint8_t *value = NULL;
-    uint32_t len = 0, read_mode = 0;
+    size_t len = 0;
+    uint32_t read_mode = 0;
     int read_vol = sg_ai_default_vol;
 
     if(NULL == mode || NULL == volume) {
@@ -103,7 +104,7 @@ static OPERATE_RET __ai_chat_load_config(uint32_t *mode, int *volume)
     }
 
     /* Read volume from KV */
-    TUYA_CALL_ERR_RETURN(tal_kv_get(TUYA_AI_CHAT_PAR, &value, (size_t *)&len));
+    TUYA_CALL_ERR_RETURN(tal_kv_get(TUYA_AI_CHAT_PAR, &value, &len));
     PR_DEBUG("read ai_toy config: %s", value);
 
     cJSON *root = cJSON_Parse((const char *)value);
