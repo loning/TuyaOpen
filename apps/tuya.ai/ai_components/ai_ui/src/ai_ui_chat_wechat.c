@@ -49,6 +49,12 @@ typedef struct {
     lv_obj_t *stream_msg_cont;
     lv_obj_t *stream_bubble;
     lv_obj_t *stream_label;
+
+#if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
+    lv_obj_t *picture;
+    lv_obj_t *picture_canvas;
+#endif
+
 }AI_UI_WECHAT_T;
 
 #if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
@@ -71,6 +77,11 @@ static bool                sg_is_streaming = false;
 #if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
 static AI_UI_DISP_CAMERA_T sg_disp_camera = {0};
 #endif
+
+#if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
+static uint8_t             *sg_picture_buffer = NULL;
+#endif
+
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
@@ -199,6 +210,15 @@ static OPERATE_RET __ui_init(void)
     lv_obj_set_scroll_dir(sg_ui.content, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(sg_ui.content, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_opa(sg_ui.content, LV_OPA_TRANSP, 0);
+
+#if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
+    sg_ui.picture = lv_obj_create(sg_ui.container);
+    lv_obj_set_size(sg_ui.picture, LV_HOR_RES, LV_VER_RES - 40);
+    lv_obj_set_style_pad_ver(sg_ui.picture, 8, 0);
+    lv_obj_set_style_pad_hor(sg_ui.picture, 10, 0);
+    lv_obj_align(sg_ui.picture, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_flag(sg_ui.picture, LV_OBJ_FLAG_HIDDEN);
+#endif
 
     lv_vendor_disp_unlock();
 
@@ -569,6 +589,54 @@ OPERATE_RET __disp_camera_end(void)
 
 #endif
 
+#if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
+OPERATE_RET __disp_picture(TUYA_FRAME_FMT_E fmt, uint16_t width, uint16_t height,\
+                                uint8_t *data, uint32_t len)
+{
+    if(fmt != TUYA_FRAME_FMT_RGB565) {
+        PR_ERR("not support fmt:%d", fmt);
+        return OPRT_NOT_SUPPORTED;
+    }
+
+    lv_vendor_disp_lock();
+
+    if(sg_ui.picture_canvas) {
+        lv_obj_delete(sg_ui.picture_canvas);
+        sg_ui.picture_canvas = NULL;
+    }
+
+    if(sg_picture_buffer) {
+        Free(sg_picture_buffer);
+        sg_picture_buffer = NULL;
+    }
+
+    sg_ui.picture_canvas = lv_canvas_create(sg_ui.picture);
+    lv_obj_set_pos(sg_ui.picture_canvas, 0, 0);
+    lv_obj_set_size(sg_ui.picture_canvas, width, height);
+
+    sg_picture_buffer = (uint8_t *)Malloc(len);
+    if(NULL == sg_picture_buffer) {
+        PR_ERR("malloc picture buffer failed");
+        lv_vendor_disp_unlock();
+        return OPRT_MALLOC_FAILED;
+    }
+
+    memcpy(sg_picture_buffer, data, len);
+
+    lv_canvas_set_buffer(sg_ui.picture_canvas, sg_picture_buffer, width, height, LV_COLOR_FORMAT_RGB565);
+
+    lv_obj_add_flag(sg_ui.content, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(sg_ui.picture, LV_OBJ_FLAG_HIDDEN);
+
+    lv_vendor_disp_unlock();
+
+    return OPRT_OK;
+}
+
+
+#endif
+
+
 OPERATE_RET ai_ui_chat_wechat_register(void)
 {
     AI_UI_INTFS_T intfs;
@@ -591,6 +659,10 @@ OPERATE_RET ai_ui_chat_wechat_register(void)
     intfs.disp_camera_start        = __disp_camera_start;
     intfs.disp_camera_flush        = __disp_camera_flush;
     intfs.disp_camera_end          = __disp_camera_end;
+#endif
+
+#if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
+    intfs.disp_picture             = __disp_picture;
 #endif
 
     return ai_ui_register(&intfs);

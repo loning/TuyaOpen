@@ -248,6 +248,16 @@ OPERATE_RET ai_ui_camera_end(void)
     return OPRT_NOT_SUPPORTED;
 }
 
+OPERATE_RET ai_ui_disp_picture(TUYA_FRAME_FMT_E fmt, uint16_t width, uint16_t height,\
+                                uint8_t *data, uint32_t len)
+{
+    if(sg_ui_intfs.disp_picture) {
+        return sg_ui_intfs.disp_picture(fmt, width, height, data, len);
+    }
+
+    return OPRT_NOT_SUPPORTED;
+}
+
 OPERATE_RET ai_ui_register(AI_UI_INTFS_T *intfs)
 {
     TUYA_CHECK_NULL_RETURN(intfs, OPRT_INVALID_PARM);

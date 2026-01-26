@@ -61,8 +61,6 @@ static void _music_src_free(AI_MUSIC_SRC_T *music)
     if (music->img_url) {
         tal_free(music->img_url);
     }
-
-    tal_free(music);
 }
 
 static AI_AUDIO_CODEC_E _parse_get_codec_type(char *format)
@@ -190,23 +188,25 @@ OPERATE_RET ai_skill_parse_music(cJSON *json, AI_AUDIO_MUSIC_T **music)
         snprintf(music_ptr->action, sizeof(music_ptr->action), "play");
     }
 
-    music_ptr->src_array = tal_malloc(sizeof(AI_MUSIC_SRC_T) * audio_num);
-    if (music_ptr->src_array == NULL) {
-        PR_ERR("malloc arr fail.");
-        ai_skill_parse_music_free(music_ptr);
-        return OPRT_MALLOC_FAILED;
-    }
-
-    memset(music_ptr->src_array, 0, sizeof(AI_MUSIC_SRC_T) * audio_num);
-
-    int i = 0;
-    for (i = 0; i < music_ptr->src_cnt; i++) {
-        music_src = &music_ptr->src_array[i];
-        node = cJSON_GetArrayItem(audios, i);
-        if (_parse_music_item(i, node, music_src) != OPRT_OK) {
-            PR_ERR("parse audio %d fail.", i);
+    if (audio_num != 0) {
+        music_ptr->src_array = tal_malloc(sizeof(AI_MUSIC_SRC_T) * audio_num);
+        if (music_ptr->src_array == NULL) {
+            PR_ERR("malloc arr fail.");
             ai_skill_parse_music_free(music_ptr);
-            return OPRT_CJSON_PARSE_ERR;
+            return OPRT_MALLOC_FAILED;
+        }
+
+        memset(music_ptr->src_array, 0, sizeof(AI_MUSIC_SRC_T) * audio_num);
+
+        int i = 0;
+        for (i = 0; i < music_ptr->src_cnt; i++) {
+            music_src = &music_ptr->src_array[i];
+            node = cJSON_GetArrayItem(audios, i);
+            if (_parse_music_item(i, node, music_src) != OPRT_OK) {
+                PR_ERR("parse audio %d fail.", i);
+                ai_skill_parse_music_free(music_ptr);
+                return OPRT_CJSON_PARSE_ERR;
+            }
         }
     }
 
@@ -221,8 +221,12 @@ void ai_skill_parse_music_free(AI_AUDIO_MUSIC_T *music)
         return;
     }
 
-    if (music->src_array) {
-        _music_src_free(music->src_array);
+    if(music->src_array) {
+        for(int i = 0; i < music->src_cnt; i++) {
+            _music_src_free(&music->src_array[i]);
+        }
+
+        tal_free(music->src_array);
     }
 
     tal_free(music);
