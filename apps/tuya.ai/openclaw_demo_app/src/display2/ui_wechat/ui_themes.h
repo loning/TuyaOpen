@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define UI_THEME_COLOR_BACKGROUND 0
+#define UI_THEME_COLOR_BACKGROUND  0
 #define UI_THEME_COLOR_STATUSBARBG 1
 #define UI_THEME_COLOR_PRIMARYTEXT 2
 
@@ -27,9 +27,9 @@ extern const ui_theme_variable_t _ui_theme_alpha_statusBarBG[2];
 extern const ui_theme_variable_t _ui_theme_color_PrimaryText[2];
 extern const ui_theme_variable_t _ui_theme_alpha_PrimaryText[2];
 
-extern const uint32_t * ui_theme_colors[2];
-extern const uint8_t * ui_theme_alphas[2];
-extern uint8_t ui_theme_idx;
+extern const uint32_t *ui_theme_colors[2];
+extern const uint8_t  *ui_theme_alphas[2];
+extern uint8_t         ui_theme_idx;
 
 void ui_theme_set(uint8_t theme_idx);
 
