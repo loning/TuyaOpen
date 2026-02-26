@@ -1,10 +1,11 @@
-## Tuya MimiClaw on T5AI
+## TuyaOpen With MimiClaw Running on T5AI
 
-This project runs **MimiClaw**, an OpenClaw‑style local‑first AI assistant, on the **Tuya T5AI** development board and optional **Linux runtime**.  
-Plug in power, connect Wi‑Fi, and your T5AI board becomes a 24/7 AI butler that talks to you via Feishu / Telegram / Discord, calls mainstream LLMs (DeepSeek, Qwen, Claude, GPT, etc.), remembers you in local text files, and can directly operate rich TuyaOpen hardware peripherals.
+This project runs the **open‑source MimiClaw project**, an OpenClaw‑style local‑first AI assistant, on the **Tuya T5AI** development board and optional **Linux runtime**.  
+Plug in power, connect Wi‑Fi, and your T5AI board becomes a 24/7 AI butler that talks to you via Feishu / Telegram / Discord, calls mainstream LLMs (DeepSeek, Claude, GPT, etc.), remembers you in local text files, and can directly operate rich TuyaOpen hardware peripherals.
 
 TuyaOpen provides drivers, display, peripherals, and connectivity layers, greatly expanding what MimiClaw can do on real products: AI lamps, pet robots, toys, dashboards, and more — all powered by an embedded agent that lives entirely on your device.
 
+**Disclaimer / trademarks**: This is an independent, unofficial TuyaOpen‑based port that runs the open‑source MimiClaw firmware on Tuya hardware. It is not an official product of Tuya, the MimiClaw maintainers, or any model / platform providers mentioned here. “MimiClaw”, “OpenClaw”, “Telegram”, “Discord”, “Feishu” and all model/provider names are trademarks or service marks of their respective owners.
 
 ### What you get
 
@@ -40,7 +41,7 @@ Please refer to the upstream README for detailed architecture notes of MimiClaw 
 
 ---
 
-## Quick migration & configuration guide (Tuya MimiClaw)
+## Quick migration & configuration guide (TuyaOpen MimiClaw port)
 
 These steps assume you have already built and flashed the firmware (or are running the Linux runtime).  
 Connect to the **serial console at 115200 baud**, open the programming port, and you will see the CLI.
@@ -157,7 +158,7 @@ This project is **heavily inspired by and derived from** the upstream work in [`
 - Local‑first memory and on‑device text files (`SOUL.md`, `USER.md`, `MEMORY.md`, etc.)
 - Tool calling, cron scheduler, and heartbeat‑driven autonomous tasks
 
-The Tuya MimiClaw port keeps these core ideas and adapts them to the **TuyaOpen** ecosystem, focusing on:
+This TuyaOpen‑based MimiClaw port keeps these core ideas and adapts them to the **TuyaOpen** ecosystem, focusing on:
 
 - T5AI hardware, displays, and peripherals
 - Integration with TuyaOpen’s AI/IoT workflows
