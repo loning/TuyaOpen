@@ -296,7 +296,7 @@ OPERATE_RET tdl_led_flash(TDL_LED_HANDLE_T handle, uint32_t half_cycle_time)
 
     __led_stop_blink(led_dev);
 
-    led_dev->blink_cfg.cnt = LED_BLINK_START;
+    led_dev->blink_cfg.cnt = TDL_BLINK_FOREVER;
     led_dev->blink_cfg.start_stat = TDL_LED_ON;
     led_dev->blink_cfg.first_half_cycle_time = half_cycle_time;
     led_dev->blink_cfg.latter_half_cycle_time = half_cycle_time;
@@ -304,8 +304,13 @@ OPERATE_RET tdl_led_flash(TDL_LED_HANDLE_T handle, uint32_t half_cycle_time)
     led_dev->blink_stat = LED_BLINK_START;
     led_dev->blink_cnt = led_dev->blink_cfg.cnt;
 
-    TUYA_CALL_ERR_RETURN(tal_sw_timer_trigger(led_dev->led_tm));
-
+    rt = tal_sw_timer_start(led_dev->led_tm, 10, TAL_TIMER_ONCE);
+    if (rt != OPRT_OK) {
+        PR_ERR("Failed to trigger LED timer: %d", rt);
+        tal_mutex_unlock(led_dev->mutex);
+        return rt;
+    }
+    
     tal_mutex_unlock(led_dev->mutex);
 
     return OPRT_OK;
@@ -343,7 +348,12 @@ OPERATE_RET tdl_led_blink(TDL_LED_HANDLE_T handle, TDL_LED_BLINK_CFG_T *cfg)
     led_dev->blink_stat = LED_BLINK_START;
     led_dev->blink_cnt = led_dev->blink_cfg.cnt;
 
-    TUYA_CALL_ERR_RETURN(tal_sw_timer_trigger(led_dev->led_tm));
+    rt = tal_sw_timer_start(led_dev->led_tm, 10, TAL_TIMER_ONCE);
+    if (rt != OPRT_OK) {
+        PR_ERR("Failed to trigger LED timer: %d", rt);
+        tal_mutex_unlock(led_dev->mutex);
+        return rt;
+    }
 
     tal_mutex_unlock(led_dev->mutex);
 
@@ -377,7 +387,12 @@ OPERATE_RET tdl_led_close(TDL_LED_HANDLE_T handle)
     __led_stop_blink(led_dev);
 
     if (led_dev->drv_intfs.led_close) {
-        TUYA_CALL_ERR_RETURN(led_dev->drv_intfs.led_close(led_dev->drv_hdl));
+        rt = led_dev->drv_intfs.led_close(led_dev->drv_hdl);
+        if (rt != OPRT_OK) {
+            PR_ERR("Failed to close LED driver: %d", rt);
+            tal_mutex_unlock(led_dev->mutex);
+            return rt;
+        }
     }
 
     led_dev->is_open = false;
