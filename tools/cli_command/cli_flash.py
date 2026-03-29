@@ -31,6 +31,7 @@ def check_bin_file(using_data) -> bool:
 def download_tyutool():
     logger = get_logger()
     params = get_global_params()
+    python = params["python"]
     tyutool_root = params["tyutool_root"]
     tyutool_cli = params["tyutool_cli"]
     if os.path.exists(tyutool_cli):
@@ -54,7 +55,7 @@ def download_tyutool():
         logger.error("Git clone tyutool_cli error.")
         return False
 
-    cmd = f"cd {tyutool_root} && pip install -r requirements.txt"
+    cmd = f"cd {tyutool_root} && {python} -m pip install -r requirements.txt"
     ret = do_subprocess(cmd)
     if ret != 0:
         logger.error("Install requirements error.")
@@ -93,8 +94,9 @@ def get_flash_cmd(using_data,
     tyutool_cli --debug write -d xxx -f xxx -p xxx -b xxx
     '''
     params = get_global_params()
+    python = params["python"]
     tyutool_cli = params["tyutool_cli"]
-    cmd = f"python {tyutool_cli}"
+    cmd = f"{python} {tyutool_cli}"
 
     if debug:
         cmd = f"{cmd} --debug"
