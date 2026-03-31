@@ -33,25 +33,91 @@
 #define mimi_fgetsize         tkl_fgetsize
 #else
 #include "tal_fs.h"
-#define mimi_fopen            tal_fopen
-#define mimi_fclose           tal_fclose
-#define mimi_fread            tal_fread
-#define mimi_fwrite           tal_fwrite
-#define mimi_fseek            tal_fseek
-#define mimi_ftell            tal_ftell
-#define mimi_fgets            tal_fgets
-#define mimi_feof             tal_feof
-#define mimi_fs_is_exist      tal_fs_is_exist
-#define mimi_fs_remove        tal_fs_remove
-#define mimi_fs_mkdir         tal_fs_mkdir
-#define mimi_fs_rename        tal_fs_rename
-#define mimi_dir_open         tal_dir_open
-#define mimi_dir_close        tal_dir_close
-#define mimi_dir_read         tal_dir_read
-#define mimi_dir_name         tal_dir_name
-#define mimi_dir_is_directory tal_dir_is_directory
-#define mimi_dir_is_regular   tal_dir_is_regular
-#define mimi_fgetsize         tal_fgetsize
+
+#define MIMI_FS_MOUNT_PREFIX   "/spiffs"
+#define MIMI_FS_MOUNT_PREFIX_N 7
+#define MIMI_FS_PATH_BUF_SIZE  512
+
+static inline const char *mimi_fs_map_path(const char *path, char *buf, size_t buf_size)
+{
+    if (!path) {
+        return NULL;
+    }
+
+    if (strncmp(path, MIMI_FS_MOUNT_PREFIX, MIMI_FS_MOUNT_PREFIX_N) != 0) {
+        return path;
+    }
+
+    const char *suffix = path + MIMI_FS_MOUNT_PREFIX_N;
+    if (*suffix == '\0') {
+        suffix = "/";
+    }
+
+    if (buf && buf_size > 0) {
+        snprintf(buf, buf_size, "%s", suffix);
+        return buf;
+    }
+
+    return suffix;
+}
+
+static inline TUYA_FILE mimi_fopen(const char *path, const char *mode)
+{
+    char mapped[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_fopen(mimi_fs_map_path(path, mapped, sizeof(mapped)), mode);
+}
+
+#define mimi_fclose tal_fclose
+#define mimi_fread   tal_fread
+#define mimi_fwrite  tal_fwrite
+#define mimi_fseek   tal_fseek
+#define mimi_ftell   tal_ftell
+#define mimi_fgets   tal_fgets
+#define mimi_feof    tal_feof
+
+static inline int mimi_fs_is_exist(const char *path, BOOL_T *is_exist)
+{
+    char mapped[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_fs_is_exist(mimi_fs_map_path(path, mapped, sizeof(mapped)), is_exist);
+}
+
+static inline int mimi_fs_remove(const char *path)
+{
+    char mapped[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_fs_remove(mimi_fs_map_path(path, mapped, sizeof(mapped)));
+}
+
+static inline int mimi_fs_mkdir(const char *path)
+{
+    char mapped[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_fs_mkdir(mimi_fs_map_path(path, mapped, sizeof(mapped)));
+}
+
+static inline int mimi_fs_rename(const char *path_old, const char *path_new)
+{
+    char mapped_old[MIMI_FS_PATH_BUF_SIZE] = {0};
+    char mapped_new[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_fs_rename(mimi_fs_map_path(path_old, mapped_old, sizeof(mapped_old)),
+                         mimi_fs_map_path(path_new, mapped_new, sizeof(mapped_new)));
+}
+
+static inline int mimi_dir_open(const char *path, TUYA_DIR *dir)
+{
+    char mapped[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_dir_open(mimi_fs_map_path(path, mapped, sizeof(mapped)), dir);
+}
+
+#define mimi_dir_close         tal_dir_close
+#define mimi_dir_read          tal_dir_read
+#define mimi_dir_name          tal_dir_name
+#define mimi_dir_is_directory  tal_dir_is_directory
+#define mimi_dir_is_regular    tal_dir_is_regular
+
+static inline int mimi_fgetsize(const char *filepath)
+{
+    char mapped[MIMI_FS_PATH_BUF_SIZE] = {0};
+    return tal_fgetsize(mimi_fs_map_path(filepath, mapped, sizeof(mapped)));
+}
 #endif
 
 #define MIMI_LOGE(tag, fmt, ...) PR_ERR("[%s] " fmt, tag, ##__VA_ARGS__)
